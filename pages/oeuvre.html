@@ -103,14 +103,7 @@
         <h3 style="font-size:1.3rem;" class="display">Fichier numérique HD</h3>
         <p style="color:var(--slate-soft);">JPEG haute résolution — usage personnel</p>
         <p style="font-size:1.9rem; margin:8px 0 6px;" class="display"><span id="digital-price"></span> €</p>
-        <form id="digital-form" action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_blank">
-          <input type="hidden" name="cmd" value="_xclick">
-          <input type="hidden" name="business" value="valleblondphotography@gmail.com">
-          <input type="hidden" name="item_name" id="digital-item-name" value="">
-          <input type="hidden" name="amount" id="digital-amount" value="">
-          <input type="hidden" name="currency_code" value="EUR">
-          <button type="submit">Acheter le fichier numérique</button>
-        </form>
+        <div id="paypal-digital-button"></div>
       </div>
 
       <p id="photo-description" style="color:#555; margin-top: 30px;"></p>
@@ -168,8 +161,7 @@
     if(data.price_digital){
       document.getElementById('digital-block').style.display = 'block';
       document.getElementById('digital-price').textContent = data.price_digital;
-      document.getElementById('digital-item-name').value = `Fichier numérique - ${data.title} HD`;
-      document.getElementById('digital-amount').value = Number(data.price_digital).toFixed(2);
+      startDigitalCheckout(data.id, document.getElementById('paypal-digital-button'));
     }
 
     document.getElementById('content-loading').style.display = 'none';
@@ -178,6 +170,8 @@
 
   window.onload = loadOeuvre;
 </script>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/paypal.js"></script>
 
 </body>
 </html>
