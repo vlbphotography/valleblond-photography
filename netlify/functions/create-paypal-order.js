@@ -2,7 +2,7 @@ export default async (request) => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
   const { artworkId } = await request.json();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const artworkResponse = await fetch(`${process.env.SUPABASE_URL}/rest/v1/Artworks?id=eq.${encodeURIComponent(artworkId)}&is_published=eq.true&select=id,title,price_digital`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  const artworkResponse = await fetch(`${process.env.SUPABASE_URL}/rest/v1/Artworks?id=eq.${encodeURIComponent(artworkId)}&is_published=eq.true&select=id,title,price_digital`, { headers: { apikey: key } });
   const artwork = await artworkResponse.json();
   if (!artworkResponse.ok) return Response.json({ error: `Supabase : ${artwork.message || artworkResponse.status}` }, { status: 500 });
   if (!artwork[0]?.price_digital) return Response.json({ error: "Cette œuvre n’est pas disponible à la vente numérique." }, { status: 404 });
