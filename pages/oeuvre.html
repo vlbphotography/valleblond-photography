@@ -59,7 +59,7 @@
 <body>
 
 <div class="wrap" style="padding-top:40px;">
-  <a href="index.html" style="color:var(--slate-soft); font-size:1.05rem; text-decoration:none;">← Retour à la galerie</a>
+  <a href="../index.html" style="color:var(--slate-soft); font-size:1.05rem; text-decoration:none;">← Retour à la galerie</a>
 
   <div id="content-loading" style="display:grid; grid-template-columns:1fr 1fr; gap:60px; margin-top:50px;">
     <div class="skeleton" style="aspect-ratio:4/5;"></div>
@@ -73,7 +73,7 @@
   <div id="content-error" class="error-state" style="display:none;">
     <h2 class="display">Cette œuvre est introuvable.</h2>
     <p style="color:var(--slate-soft);">Elle n'est peut-être plus disponible, ou le lien est incorrect.</p>
-    <p style="margin-top:24px;"><a href="index.html">← Retourner à la galerie</a></p>
+    <p style="margin-top:24px;"><a href="../index.html">← Retourner à la galerie</a></p>
   </div>
 
   <div id="content-main" style="display:none; grid-template-columns:1fr 1fr; gap:60px; margin-top:50px;">
@@ -142,6 +142,7 @@
       .from('Artworks')
       .select('*')
       .eq('id', id)
+      .eq('is_published', true)
       .single();
 
     if(error || !data){

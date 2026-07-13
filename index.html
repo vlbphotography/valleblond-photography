@@ -166,7 +166,7 @@
   <div class="brand">Valleblond Photography</div>
   <div class="nav-links">
     <a href="#gallery">Galerie</a>
-    <a href="apropos.html">À propos</a>
+    <a href="pages/apropos.html">À propos</a>
     <a href="#contact">Contact</a>
   </div>
 </nav>
@@ -199,6 +199,7 @@
     const { data, error } = await supabaseClient
       .from('Artworks')
       .select('*')
+      .eq('is_published', true)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -212,12 +213,12 @@
     data.forEach(photo => {
       const card = document.createElement('div');
       card.className = 'card';
-      card.onclick = () => window.location.href = `oeuvre.html?id=${photo.id}`;
+      card.onclick = () => window.location.href = `pages/oeuvre.html?id=${photo.id}`;
       card.innerHTML = `
         <img src="${photo.image_url}" alt="${photo.title}">
         <h3>${photo.title}</h3>
         ${photo.location ? `<p class="loc">${photo.location}</p>` : ''}
-        <a href="oeuvre.html?id=${photo.id}" class="button">DÉCOUVRIR L'ŒUVRE</a>
+        <a href="pages/oeuvre.html?id=${photo.id}" class="button">DÉCOUVRIR L'ŒUVRE</a>
       `;
       grid.appendChild(card);
     });
