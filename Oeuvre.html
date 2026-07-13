@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">Valleblond Photography</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --chalk: #F8F7F4;
+    --ink: #1C1C1C;
+    --gold: #B8935B;
+    --slate-soft: #666;
+  }
+  body { 
+    background: var(--chalk); 
+    color: var(--ink); 
+    font-family: 'Work Sans', sans-serif; 
+    margin:0; 
+    padding:0; 
+    line-height:1.6;
+  }
+  .wrap { max-width: 1000px; margin:0 auto; padding:0 32px; }
+  img { max-width:100%; height:auto; }
+  .display { font-family: 'Fraunces', serif; }
+  button {
+    background:var(--ink); 
+    color:white; 
+    padding:16px 32px; 
+    border:none; 
+    cursor:pointer;
+    font-size:1rem;
+    letter-spacing: 0.5px;
+    margin-top:10px;
+    width:100%;
+    transition: background 0.3s;
+  }
+  button:hover { background:#000; }
+
+  .skeleton{
+    background:linear-gradient(90deg, #e8e6df 25%, #f2f0ea 37%, #e8e6df 63%);
+    background-size:400% 100%;
+    animation:shimmer 1.4s ease infinite;
+  }
+  @keyframes shimmer{ 0%{background-position:100% 0;} 100%{background-position:0 0;} }
+
+  .error-state{
+    text-align:center;
+    padding:140px 20px;
+  }
+  .error-state a{ color: var(--ink); }
+
+  @media (max-width: 760px){
+    #content-main, #content-loading { grid-template-columns: 1fr !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap" style="padding-top:40px;">
+  <a href="index.html" style="color:var(--slate-soft); font-size:1.05rem; text-decoration:none;">← Retour à la galerie</a>
+
+  <div id="content-loading" style="display:grid; grid-template-columns:1fr 1fr; gap:60px; margin-top:50px;">
+    <div class="skeleton" style="aspect-ratio:4/5;"></div>
+    <div>
+      <div class="skeleton" style="height:2.8rem; width:80%; margin-bottom:16px;"></div>
+      <div class="skeleton" style="height:1.1rem; width:40%; margin-bottom:40px;"></div>
+      <div class="skeleton" style="height:110px; width:100%;"></div>
+    </div>
+  </div>
+
+  <div id="content-error" class="error-state" style="display:none;">
+    <h2 class="display">Cette œuvre est introuvable.</h2>
+    <p style="color:var(--slate-soft);">Elle n'est peut-être plus disponible, ou le lien est incorrect.</p>
+    <p style="margin-top:24px;"><a href="index.html">← Retourner à la galerie</a></p>
+  </div>
+
+  <div id="content-main" style="display:none; grid-template-columns:1fr 1fr; gap:60px; margin-top:50px;">
+    <div>
+      <img id="photo-img" src="" alt="">
+    </div>
+
+    <div>
+      <h1 class="display" id="photo-title" style="font-size:2.6rem; line-height:1.1;"></h1>
+      <p id="photo-subtitle" style="color:var(--slate-soft); font-size:1.05rem;"></p>
+
+      <div id="print-block" style="margin:36px 0 26px; display:none;">
+        <h3 style="font-size:1.3rem;" class="display">Tirage physique</h3>
+        <p id="print-format" style="color:var(--slate-soft);"></p>
+        <p style="font-size:1.9rem; margin:8px 0 6px;" class="display"><span id="print-price"></span> €</p>
+        <form id="print-form" action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_blank">
+          <input type="hidden" name="cmd" value="_xclick">
+          <input type="hidden" name="business" value="valleblondphotography@gmail.com">
+          <input type="hidden" name="item_name" id="print-item-name" value="">
+          <input type="hidden" name="amount" id="print-amount" value="">
+          <input type="hidden" name="currency_code" value="EUR">
+          <button type="submit">Acheter le tirage</button>
+        </form>
+      </div>
+
+      <div id="digital-block" style="margin:26px 0; display:none;">
+        <h3 style="font-size:1.3rem;" class="display">Fichier numérique HD</h3>
+        <p style="color:var(--slate-soft);">JPEG haute résolution — usage personnel</p>
+        <p style="font-size:1.9rem; margin:8px 0 6px;" class="display"><span id="digital-price"></span> €</p>
+        <form id="digital-form" action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_blank">
+          <input type="hidden" name="cmd" value="_xclick">
+          <input type="hidden" name="business" value="valleblondphotography@gmail.com">
+          <input type="hidden" name="item_name" id="digital-item-name" value="">
+          <input type="hidden" name="amount" id="digital-amount" value="">
+          <input type="hidden" name="currency_code" value="EUR">
+          <button type="submit">Acheter le fichier numérique</button>
+        </form>
+      </div>
+
+      <p id="photo-description" style="color:#555; margin-top: 30px;"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+  const supabaseUrl = 'https://wanwxjzfxlxunynnmxia.supabase.co';
+  const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhbnd4anpmeGx4dW55bm5teGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NTQxNjUsImV4cCI6MjA5OTUzMDE2NX0.B0yzXCKrRrVUVfUMpa_f2fI-TWXQ7VSeaRGIeDwFHaM';
+
+  const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+  function showError(){
+    document.getElementById('content-loading').style.display = 'none';
+    document.getElementById('content-error').style.display = 'block';
+  }
+
+  async function loadOeuvre(){
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+
+    if(!id){
+      showError();
+      return;
+    }
+
+    const { data, error } = await supabaseClient
+      .from('Artworks')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if(error || !data){
+      showError();
+      return;
+    }
+
+    document.getElementById('page-title').textContent = `${data.title} — Valleblond Photography`;
+    document.getElementById('photo-img').src = data.image_url;
+    document.getElementById('photo-img').alt = data.title;
+    document.getElementById('photo-title').textContent = data.title;
+    document.getElementById('photo-subtitle').textContent = data.location || '';
+    document.getElementById('photo-description').textContent = data.description || '';
+
+    if(data.price_physical){
+      document.getElementById('print-block').style.display = 'block';
+      document.getElementById('print-format').textContent = data.format || 'Tirage fine art';
+      document.getElementById('print-price').textContent = data.price_physical;
+      document.getElementById('print-item-name').value = `Tirage - ${data.title}`;
+      document.getElementById('print-amount').value = Number(data.price_physical).toFixed(2);
+    }
+
+    if(data.price_digital){
+      document.getElementById('digital-block').style.display = 'block';
+      document.getElementById('digital-price').textContent = data.price_digital;
+      document.getElementById('digital-item-name').value = `Fichier numérique - ${data.title} HD`;
+      document.getElementById('digital-amount').value = Number(data.price_digital).toFixed(2);
+    }
+
+    document.getElementById('content-loading').style.display = 'none';
+    document.getElementById('content-main').style.display = 'grid';
+  }
+
+  window.onload = loadOeuvre;
+</script>
+
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Valleblond Photography</title>
+<meta name="description" content="Photographies d'instants, de paysages et d'émotions. Tirages fine art et fichiers numériques.">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --chalk: #F8F7F4;
+    --ink: #1C1C1C;
+    --gold: #B8935B;
+  }
+  body { 
+    background: var(--chalk); 
+    color: var(--ink); 
+    font-family: 'Work Sans', sans-serif; 
+    margin:0; 
+    padding:0;
+    overflow-x: hidden;
+  }
+
+  .nav {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 100;
+    padding: 24px clamp(20px, 5%, 80px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    background: rgba(248,247,244,0.97);
+    backdrop-filter: blur(12px);
+    transition: transform 0.4s ease;
+    box-sizing: border-box;
+  }
+  .brand {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(1.05rem, 2.2vw, 1.5rem);
+    letter-spacing: -0.5px;
+    white-space: nowrap;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .nav-links {
+    display: flex;
+    gap: clamp(14px, 2.5vw, 36px);
+    flex-shrink: 0;
+  }
+  .nav-links a {
+    font-size: clamp(0.78rem, 1.4vw, 0.95rem);
+    letter-spacing: 1px;
+    position: relative;
+    padding-bottom: 4px;
+    color: var(--ink);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .nav-links a:after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 1.5px;
+    bottom: 0;
+    left: 0;
+    background: var(--ink);
+    transition: width 0.4s ease;
+  }
+  .nav-links a:hover:after {
+    width: 100%;
+  }
+
+  .hero {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 20px;
+    position: relative;
+  }
+  .hero h1 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(2.6rem, 8vw, 6rem);
+    line-height: 1.05;
+    max-width: 900px;
+  }
+  .scroll-hint {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    opacity: 0.6;
+    animation: bounce 2s infinite;
+  }
+  @keyframes bounce {
+    50% { transform: translate(-50%, 10px); }
+  }
+  .gallery {
+    padding: 140px 6% 120px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 70px;
+  }
+  .card {
+    cursor: pointer;
+  }
+  .card img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform 0.9s ease;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  }
+  .card:hover img {
+    transform: scale(1.04);
+  }
+  .card h3 {
+    margin-top: 25px;
+    font-family: 'Fraunces', serif;
+    font-size: 1.45rem;
+  }
+  .card p.loc {
+    color: #666;
+    margin-top: 4px;
+    font-size: 0.95rem;
+  }
+  .button {
+    margin-top: 20px;
+    padding: 18px 45px;
+    background: transparent;
+    color: var(--ink);
+    border: 2px solid var(--ink);
+    cursor: pointer;
+    font-size: 0.95rem;
+    letter-spacing: 1px;
+    transition: all 0.4s ease;
+    display: inline-block;
+    text-decoration: none;
+  }
+  .button:hover {
+    background: var(--ink);
+    color: white;
+  }
+
+  footer {
+    padding: 60px 6%;
+    text-align: center;
+    color: #666;
+    font-size: 0.85rem;
+    border-top: 1px solid rgba(0,0,0,0.08);
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav" id="navbar">
+  <div class="brand">Valleblond Photography</div>
+  <div class="nav-links">
+    <a href="#gallery">Galerie</a>
+    <a href="apropos.html">À propos</a>
+    <a href="#contact">Contact</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div>
+    <h1>Photographies d'instants,<br>de paysages et d'émotions.</h1>
+    <div class="scroll-hint">SCROLL POUR DÉCOUVRIR ↓</div>
+  </div>
+</section>
+
+<section class="gallery" id="gallery">
+  <div class="grid" id="photo-grid">
+    <!-- Supabase -->
+  </div>
+</section>
+
+<footer id="contact">
+  Créé par Valleblond Photography<br>
+  <a href="https://instagram.com/vlb_photo_" target="_blank" rel="noopener" style="color:inherit;">Instagram @vlb_photo_</a>
+</footer>
+
+<script>
+  const supabaseUrl = 'https://wanwxjzfxlxunynnmxia.supabase.co';
+  const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhbnd4anpmeGx4dW55bm5teGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NTQxNjUsImV4cCI6MjA5OTUzMDE2NX0.B0yzXCKrRrVUVfUMpa_f2fI-TWXQ7VSeaRGIeDwFHaM';
+
+  const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+  async function loadPhotos() {
+    const { data, error } = await supabaseClient
+      .from('Artworks')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Erreur Supabase:', error);
+      return;
+    }
+
+    const grid = document.getElementById('photo-grid');
+    grid.innerHTML = '';
+
+    data.forEach(photo => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.onclick = () => window.location.href = `oeuvre.html?id=${photo.id}`;
+      card.innerHTML = `
+        <img src="${photo.image_url}" alt="${photo.title}">
+        <h3>${photo.title}</h3>
+        ${photo.location ? `<p class="loc">${photo.location}</p>` : ''}
+        <a href="oeuvre.html?id=${photo.id}" class="button">DÉCOUVRIR L'ŒUVRE</a>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  let lastScroll = 0;
+  window.addEventListener('scroll', () => {
+    const navbar = document.getElementById('navbar');
+    const currentScroll = window.pageYOffset;
+    if (currentScroll > lastScroll && currentScroll > 150) {
+      navbar.style.transform = 'translateY(-100%)';
+    } else {
+      navbar.style.transform = 'translateY(0)';
+    }
+    lastScroll = currentScroll;
+  });
+
+  window.onload = loadPhotos;
+</script>
+
+</body>
+</html>
