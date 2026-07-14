@@ -121,17 +121,18 @@
     padding: 140px clamp(22px, 6vw, 120px) 120px;
   }
   .grid {
-    /* Les colonnes CSS préservent le ratio de chaque photographie tout en
-       supprimant les grands vides laissés par une grille classique. */
-    column-count: 4;
-    column-gap: clamp(32px, 4vw, 70px);
+    /* Une grille éditoriale crée une ligne de lecture nette : les actions
+       restent alignées, quelle que soit la hauteur de chaque photographie. */
+    align-items: stretch;
+    display: grid;
+    gap: clamp(42px, 5vw, 80px);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .card {
-    break-inside: avoid;
     cursor: pointer;
-    display: inline-block;
-    margin: 0 0 clamp(54px, 6vw, 92px);
-    vertical-align: top;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     width: 100%;
   }
   .card-media {
@@ -159,7 +160,8 @@
     font-size: 0.95rem;
   }
   .button {
-    margin-top: 22px;
+    align-self: flex-start;
+    margin-top: auto;
     padding: 16px 28px;
     background: transparent;
     color: var(--ink);
@@ -189,15 +191,14 @@
   .footer-legal { display:flex; flex-wrap:wrap; gap:8px 18px; justify-content:center; margin:22px 0 0; }
   .footer-legal a { color:inherit; font-size:0.78rem; }
   @media (max-width: 1200px) {
-    .grid { column-count: 3; }
+    .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
   @media (max-width: 820px) {
     .gallery { padding-top: 90px; }
-    .grid { column-count: 2; }
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   @media (max-width: 520px) {
-    .grid { column-count: 1; }
-    .card { margin-bottom: 58px; }
+    .grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
