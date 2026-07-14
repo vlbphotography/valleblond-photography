@@ -126,6 +126,7 @@
     align-items: stretch;
     display: grid;
     gap: clamp(42px, 5vw, 80px);
+    grid-auto-flow: row dense;
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .card {
@@ -190,6 +191,11 @@
   .footer-social { color: inherit; }
   .footer-legal { display:flex; flex-wrap:wrap; gap:8px 18px; justify-content:center; margin:22px 0 0; }
   .footer-legal a { color:inherit; font-size:0.78rem; }
+  /* Les paysages deviennent des œuvres panoramiques sur les grands écrans.
+     Aucun cadrage n’est coupé : seule leur place dans la grille évolue. */
+  @media (min-width: 821px) {
+    .card--landscape { grid-column: span 2; }
+  }
   @media (max-width: 1200px) {
     .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
@@ -272,6 +278,18 @@
         ${photo.location ? `<p class="loc">${photo.location}</p>` : ''}
         <a href="pages/oeuvre.html?id=${photo.id}" class="button">DÉCOUVRIR L'ŒUVRE</a>
       `;
+
+      // Une œuvre nettement horizontale prend deux colonnes. Le seuil évite
+      // de surdimensionner les formats presque carrés.
+      const image = card.querySelector('img');
+      const setArtworkFormat = () => {
+        if (image.naturalWidth / image.naturalHeight >= 1.25) {
+          card.classList.add('card--landscape');
+        }
+      };
+      image.addEventListener('load', setArtworkFormat, { once: true });
+      if (image.complete) setArtworkFormat();
+
       grid.appendChild(card);
     });
   }
