@@ -587,12 +587,53 @@ function renderArtworkList(user, successMessage = "") {
 }
 
 async function renderOrders(user) {
-    renderStudioShell(user, "orders", '<p class="eyebrow">VENTES</p><h1 class="display">Commandes</h1><p class="dashboard-intro">Paiements numériques confirmés.</p><div class="studio-artwork-list" id="orders-list"></div>');
+    renderStudioShell(user, "orders", '<p class="eyebrow">VENTES</p><h1 class="display">Commandes</h1><p class="dashboard-intro">Paiements confirmés. Les tirages incluent l’adresse de livraison communiquée dans PayPal.</p><div class="studio-artwork-list" id="orders-list"></div>');
     const list = document.getElementById("orders-list");
-    const { data, error } = await supabaseClient.from("digital_orders").select("buyer_email, amount, currency, status, created_at, Artworks(title)").order("created_at", { ascending: false });
-    if (error) { list.textContent = "Les commandes sont indisponibles."; return; }
-    if (!data.length) { list.textContent = "Aucune commande pour le moment."; return; }
-    data.forEach((order) => { const row = document.createElement("article"); row.className = "studio-artwork-item"; row.textContent = `${order.Artworks?.title || "Œuvre"} · ${order.amount} ${order.currency} · ${order.buyer_email || "Email indisponible"} · ${formatArtworkDate(order.created_at)}`; list.append(row); });
+    list.textContent = "Chargement des commandes…";
+
+    const [digitalResult, printResult] = await Promise.all([
+        supabaseClient.from("digital_orders").select("buyer_email, amount, currency, status, created_at, Artworks(title)").order("created_at", { ascending: false }),
+        supabaseClient.from("print_orders").select("buyer_email, amount, currency, status, created_at, shipping_address, Artworks(title)").order("created_at", { ascending: false })
+    ]);
+
+    if (digitalResult.error && printResult.error) {
+        list.textContent = "Les commandes sont indisponibles.";
+        return;
+    }
+
+    const orders = [
+        ...(digitalResult.data || []).map((order) => ({ ...order, type: "numérique" })),
+        ...(printResult.data || []).map((order) => ({ ...order, type: "tirage" }))
+    ].sort((first, second) => new Date(second.created_at) - new Date(first.created_at));
+
+    if (!orders.length) {
+        list.textContent = "Aucune commande pour le moment.";
+        return;
+    }
+
+    list.innerHTML = "";
+    orders.forEach((order) => {
+        const row = document.createElement("article");
+        row.className = "studio-artwork-item";
+
+        const details = document.createElement("p");
+        details.textContent = `${order.type === "tirage" ? "Tirage physique" : "Fichier numérique"} · ${order.Artworks?.title || "Œuvre"} · ${order.amount} ${order.currency} · ${order.buyer_email || "Email indisponible"} · ${formatArtworkDate(order.created_at)}`;
+        row.append(details);
+
+        if (order.type === "tirage") {
+            const address = order.shipping_address?.address;
+            const recipient = order.shipping_address?.name?.full_name;
+            const delivery = document.createElement("p");
+            delivery.style.margin = "8px 0 0";
+            delivery.style.color = "var(--slate-soft)";
+            delivery.textContent = address
+                ? `Livraison : ${recipient ? `${recipient}, ` : ""}${[address.address_line_1, address.address_line_2, address.postal_code, address.admin_area_2, address.country_code].filter(Boolean).join(", ")}`
+                : "Adresse de livraison à confirmer avec l’acheteur.";
+            row.append(delivery);
+        }
+
+        list.append(row);
+    });
 }
 
 function openDeleteDialog(user, artwork) {

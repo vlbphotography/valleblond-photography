@@ -89,14 +89,7 @@
         <h3 style="font-size:1.3rem;" class="display">Tirage physique</h3>
         <p id="print-format" style="color:var(--slate-soft);"></p>
         <p style="font-size:1.9rem; margin:8px 0 6px;" class="display"><span id="print-price"></span> €</p>
-        <form id="print-form" action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_blank">
-          <input type="hidden" name="cmd" value="_xclick">
-          <input type="hidden" name="business" value="valleblondphotography@gmail.com">
-          <input type="hidden" name="item_name" id="print-item-name" value="">
-          <input type="hidden" name="amount" id="print-amount" value="">
-          <input type="hidden" name="currency_code" value="EUR">
-          <button type="submit">Acheter le tirage</button>
-        </form>
+        <div id="paypal-print-button"></div>
       </div>
 
       <div id="digital-block" style="margin:26px 0; display:none;">
@@ -154,8 +147,7 @@
       document.getElementById('print-block').style.display = 'block';
       document.getElementById('print-format').textContent = data.format || 'Tirage fine art';
       document.getElementById('print-price').textContent = data.price_physical;
-      document.getElementById('print-item-name').value = `Tirage - ${data.title}`;
-      document.getElementById('print-amount').value = Number(data.price_physical).toFixed(2);
+      startPrintCheckout(data.id, document.getElementById('paypal-print-button'));
     }
 
     if(data.price_digital){
