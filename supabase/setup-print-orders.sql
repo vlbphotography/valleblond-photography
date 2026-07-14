@@ -21,6 +21,8 @@ alter table public.print_orders add column if not exists completed_at timestampt
 
 alter table public.print_orders enable row level security;
 grant select on public.print_orders to authenticated;
+-- Les fonctions Netlify enregistrent la commande après la capture PayPal.
+grant select, insert, update on public.print_orders to service_role;
 
 drop policy if exists "Studio administrators can read print orders" on public.print_orders;
 create policy "Studio administrators can read print orders"
