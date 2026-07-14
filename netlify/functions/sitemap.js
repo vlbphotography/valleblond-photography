@@ -1,4 +1,6 @@
 const SITE_URL = "https://vlbphotography.netlify.app";
+// Cette clé est publique et ne donne accès qu'aux œuvres publiées par les RLS.
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhbnd4anpmeGx4dW55bm5teGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NTQxNjUsImV4cCI6MjA5OTUzMDE2NX0.B0yzXCKrRrVUVfUMpa_f2fI-TWXQ7VSeaRGIeDwFHaM";
 
 function escapeXml(value) {
   return String(value)
@@ -11,10 +13,9 @@ function escapeXml(value) {
 
 // Liste automatiquement les œuvres publiées pour les moteurs de recherche.
 export default async () => {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const response = await fetch(
     `${process.env.SUPABASE_URL}/rest/v1/Artworks?is_published=eq.true&select=id,created_at`,
-    { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+    { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
   );
 
   if (!response.ok) {
