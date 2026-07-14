@@ -614,9 +614,10 @@ async function renderOrders(user) {
     list.innerHTML = "";
     orders.forEach((order) => {
         const row = document.createElement("article");
-        row.className = "studio-artwork-item";
+        row.className = "studio-order-item";
 
         const details = document.createElement("p");
+        details.className = "studio-order-summary";
         details.textContent = `${order.type === "tirage" ? "Tirage physique" : "Fichier numérique"} · ${order.Artworks?.title || "Œuvre"} · ${order.amount} ${order.currency} · ${order.buyer_email || "Email indisponible"} · ${formatArtworkDate(order.created_at)}`;
         row.append(details);
 
@@ -624,6 +625,7 @@ async function renderOrders(user) {
             const address = order.shipping_address?.address;
             const recipient = order.shipping_address?.name?.full_name;
             const delivery = document.createElement("p");
+            delivery.className = "studio-order-delivery";
             delivery.style.margin = "8px 0 0";
             delivery.style.color = "var(--slate-soft)";
             delivery.textContent = address

@@ -469,6 +469,27 @@
     padding: var(--space-sm) 0;
 }
 
+/* Les commandes n'ont pas de vignette : elles utilisent toute la largeur. */
+.studio-order-item {
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    gap: 0.5rem;
+    padding: 1.5rem 0;
+}
+
+.studio-order-summary {
+    font-size: 1rem;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+.studio-order-delivery {
+    color: var(--text-light);
+    font-size: 0.9rem;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+}
+
 .studio-artwork-item > img {
     aspect-ratio: 1;
     background: #e8e6df;

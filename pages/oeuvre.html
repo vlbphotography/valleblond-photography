@@ -4,6 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title id="page-title">Valleblond Photography</title>
+<meta id="page-description" name="description" content="Découvrez une œuvre de Valleblond Photography.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#F8F7F4">
+<link id="page-canonical" rel="canonical" href="https://vlbphotography.netlify.app/pages/oeuvre.html">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:type" content="product">
+<meta id="og-title" property="og:title" content="Valleblond Photography">
+<meta id="og-description" property="og:description" content="Découvrez une œuvre de Valleblond Photography.">
+<meta id="og-url" property="og:url" content="https://vlbphotography.netlify.app/pages/oeuvre.html">
+<meta id="og-image" property="og:image" content="">
+<meta name="twitter:card" content="summary_large_image">
+<meta id="twitter-title" name="twitter:title" content="Valleblond Photography">
+<meta id="twitter-description" name="twitter:description" content="Découvrez une œuvre de Valleblond Photography.">
+<meta id="twitter-image" name="twitter:image" content="">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -137,6 +151,17 @@
     }
 
     document.getElementById('page-title').textContent = `${data.title} — Valleblond Photography`;
+    const artworkUrl = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(data.id)}`;
+    const artworkDescription = data.description || `Découvrez ${data.title}, une photographie de Valleblond Photography.`;
+    document.getElementById('page-description').content = artworkDescription;
+    document.getElementById('page-canonical').href = artworkUrl;
+    document.getElementById('og-title').content = `${data.title} — Valleblond Photography`;
+    document.getElementById('og-description').content = artworkDescription;
+    document.getElementById('og-url').content = artworkUrl;
+    document.getElementById('og-image').content = data.image_url;
+    document.getElementById('twitter-title').content = `${data.title} — Valleblond Photography`;
+    document.getElementById('twitter-description').content = artworkDescription;
+    document.getElementById('twitter-image').content = data.image_url;
     document.getElementById('photo-img').src = data.image_url;
     document.getElementById('photo-img').alt = data.title;
     document.getElementById('photo-title').textContent = data.title;

@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /pages/admin/
+
+Sitemap: https://vlbphotography.netlify.app/sitemap.xml
