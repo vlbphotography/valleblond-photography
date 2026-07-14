@@ -56,24 +56,22 @@ export default async (request) => {
       return errorResponse("Paiement non confirmé.", 422);
     }
 
-    const saveResponse = await fetch(`${process.env.SUPABASE_URL}/rest/v1/print_orders`, {
+    const saveResponse = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/record_print_order`, {
       method: "POST",
       headers: {
         apikey: serviceKey,
         Authorization: `Bearer ${serviceKey}`,
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates"
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        artwork_id: unit.custom_id,
-        paypal_order_id: order.id,
-        paypal_capture_id: capture.id,
-        buyer_email: order.payer?.email_address,
-        amount: capture.amount.value,
-        currency: capture.amount.currency_code,
-        shipping_address: unit.shipping || null,
-        status: "completed",
-        completed_at: new Date().toISOString()
+        p_artwork_id: unit.custom_id,
+        p_paypal_order_id: order.id,
+        p_paypal_capture_id: capture.id,
+        p_buyer_email: order.payer?.email_address || null,
+        p_amount: capture.amount.value,
+        p_currency: capture.amount.currency_code,
+        p_shipping_address: unit.shipping || null,
+        p_completed_at: new Date().toISOString()
       })
     });
 
