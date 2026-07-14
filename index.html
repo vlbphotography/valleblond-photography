@@ -116,42 +116,54 @@
     50% { transform: translate(-50%, 10px); }
   }
   .gallery {
-    padding: 140px 6% 120px;
+    width: min(100%, 1900px);
+    margin: 0 auto;
+    padding: 140px clamp(22px, 6vw, 120px) 120px;
   }
   .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-    gap: 70px;
+    /* Les colonnes CSS préservent le ratio de chaque photographie tout en
+       supprimant les grands vides laissés par une grille classique. */
+    column-count: 4;
+    column-gap: clamp(32px, 4vw, 70px);
   }
   .card {
+    break-inside: avoid;
     cursor: pointer;
+    display: inline-block;
+    margin: 0 0 clamp(54px, 6vw, 92px);
+    vertical-align: top;
+    width: 100%;
+  }
+  .card-media {
+    background: #ECEAE4;
+    overflow: hidden;
   }
   .card img {
     width: 100%;
     height: auto;
     display: block;
     transition: transform 0.9s ease;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
   }
-  .card:hover img {
+  .card:hover .card-media img {
     transform: scale(1.04);
   }
   .card h3 {
-    margin-top: 25px;
+    margin: 20px 0 0;
     font-family: 'Fraunces', serif;
-    font-size: 1.45rem;
+    font-size: clamp(1.3rem, 1.8vw, 1.6rem);
+    line-height: 1.2;
   }
   .card p.loc {
     color: #666;
-    margin-top: 4px;
+    margin: 8px 0 0;
     font-size: 0.95rem;
   }
   .button {
-    margin-top: 20px;
-    padding: 18px 45px;
+    margin-top: 22px;
+    padding: 16px 28px;
     background: transparent;
     color: var(--ink);
-    border: 2px solid var(--ink);
+    border: 1px solid var(--ink);
     cursor: pointer;
     font-size: 0.95rem;
     letter-spacing: 1px;
@@ -176,6 +188,17 @@
   .footer-social { color: inherit; }
   .footer-legal { display:flex; flex-wrap:wrap; gap:8px 18px; justify-content:center; margin:22px 0 0; }
   .footer-legal a { color:inherit; font-size:0.78rem; }
+  @media (max-width: 1200px) {
+    .grid { column-count: 3; }
+  }
+  @media (max-width: 820px) {
+    .gallery { padding-top: 90px; }
+    .grid { column-count: 2; }
+  }
+  @media (max-width: 520px) {
+    .grid { column-count: 1; }
+    .card { margin-bottom: 58px; }
+  }
 </style>
 </head>
 <body>
@@ -241,7 +264,9 @@
       card.className = 'card';
       card.onclick = () => window.location.href = `pages/oeuvre.html?id=${photo.id}`;
       card.innerHTML = `
-        <img src="${photo.image_url}" alt="${photo.title}" loading="lazy" decoding="async">
+        <div class="card-media">
+          <img src="${photo.image_url}" alt="${photo.title}" loading="lazy" decoding="async">
+        </div>
         <h3>${photo.title}</h3>
         ${photo.location ? `<p class="loc">${photo.location}</p>` : ''}
         <a href="pages/oeuvre.html?id=${photo.id}" class="button">DÉCOUVRIR L'ŒUVRE</a>
