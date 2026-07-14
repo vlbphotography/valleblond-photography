@@ -52,6 +52,40 @@
   }
   button:hover { background:#000; }
 
+  .digital-consent {
+    border-top: 1px solid #ddd9d1;
+    margin-top: 20px;
+    padding-top: 18px;
+  }
+  .digital-consent label {
+    align-items: flex-start;
+    cursor: pointer;
+    display: flex;
+    font-size: 0.9rem;
+    gap: 10px;
+    line-height: 1.45;
+  }
+  .digital-consent input { margin-top: 4px; }
+  .digital-consent-note {
+    color: var(--slate-soft);
+    font-size: 0.82rem;
+    margin: 9px 0 0 26px;
+  }
+  .delivery-select {
+    background: transparent;
+    border: 1px solid #bdb8ad;
+    color: var(--ink);
+    font: inherit;
+    margin: 4px 0 18px;
+    padding: 12px;
+    width: 100%;
+  }
+  .price-detail {
+    color: var(--slate-soft);
+    font-size: 0.9rem;
+    margin: 0 0 12px;
+  }
+
   .skeleton{
     background:linear-gradient(90deg, #e8e6df 25%, #f2f0ea 37%, #e8e6df 63%);
     background-size:400% 100%;
@@ -102,7 +136,20 @@
       <div id="print-block" style="margin:36px 0 26px; display:none;">
         <h3 style="font-size:1.3rem;" class="display">Tirage physique</h3>
         <p id="print-format" style="color:var(--slate-soft);"></p>
-        <p style="font-size:1.9rem; margin:8px 0 6px;" class="display"><span id="print-price"></span> €</p>
+        <label for="shipping-zone" style="display:block; font-size:0.9rem; margin-top:18px;">Lieu de livraison</label>
+        <select id="shipping-zone" class="delivery-select">
+          <option value="" selected disabled>Choisissez votre zone de livraison</option>
+          <option value="france">France métropolitaine</option>
+          <option value="europe">Union européenne et Suisse</option>
+          <option value="uk">Royaume-Uni</option>
+          <option value="world">Reste du monde</option>
+          <option value="local">Livraison locale autour d’Amiens</option>
+        </select>
+        <div id="print-total-block" style="display:none;">
+          <p style="font-size:0.85rem; letter-spacing:0.08em; margin:0; text-transform:uppercase;">Total livraison incluse</p>
+          <p style="font-size:1.9rem; margin:6px 0;" class="display"><span id="print-total"></span> €</p>
+          <p id="print-price-detail" class="price-detail"></p>
+        </div>
         <div id="paypal-print-button"></div>
       </div>
 
@@ -110,6 +157,13 @@
         <h3 style="font-size:1.3rem;" class="display">Fichier numérique HD</h3>
         <p style="color:var(--slate-soft);">JPEG haute résolution — usage personnel</p>
         <p style="font-size:1.9rem; margin:8px 0 6px;" class="display"><span id="digital-price"></span> €</p>
+        <div class="digital-consent">
+          <label for="digital-withdrawal-consent">
+            <input id="digital-withdrawal-consent" type="checkbox">
+            <span>Je demande expressément que l’envoi du fichier commence immédiatement après le paiement et reconnais perdre mon droit de rétractation dès le début de cet envoi.</span>
+          </label>
+          <p class="digital-consent-note">Le fichier est destiné à un usage personnel. L’envoi est réalisé par email après confirmation du paiement.</p>
+        </div>
         <div id="paypal-digital-button"></div>
       </div>
 
@@ -171,14 +225,62 @@
     if(data.price_physical){
       document.getElementById('print-block').style.display = 'block';
       document.getElementById('print-format').textContent = data.format || 'Tirage fine art';
-      document.getElementById('print-price').textContent = data.price_physical;
-      startPrintCheckout(data.id, document.getElementById('paypal-print-button'));
+
+      // Les tarifs sont arrondis pour couvrir l'emballage et rester lisibles.
+      // Ils correspondent à un tirage A3 non encadré expédié par Colissimo.
+      const shippingOptions = {
+        france: { label: 'Colissimo France', amount: 9 },
+        europe: { label: 'Colissimo Europe', amount: 17 },
+        uk: { label: 'Colissimo Royaume-Uni', amount: 23 },
+        world: { label: 'Colissimo international', amount: 39 }
+      };
+      const shippingZone = document.getElementById('shipping-zone');
+      const totalBlock = document.getElementById('print-total-block');
+      const total = document.getElementById('print-total');
+      const detail = document.getElementById('print-price-detail');
+      const printContainer = document.getElementById('paypal-print-button');
+      const printPrice = Number(data.price_physical);
+
+      shippingZone.addEventListener('change', () => {
+        const selectedZone = shippingZone.value;
+        printContainer.textContent = '';
+        totalBlock.style.display = 'block';
+
+        if (selectedZone === 'local') {
+          total.textContent = printPrice.toFixed(2);
+          detail.textContent = `Œuvre ${printPrice.toFixed(2)} € · livraison locale offerte après validation de la zone.`;
+          printContainer.innerHTML = '<p class="price-detail">Contactez-nous avant commande pour confirmer que votre adresse se situe dans un rayon de 50 km autour d’Amiens.</p>';
+          return;
+        }
+
+        const shipping = shippingOptions[selectedZone];
+        if (!shipping) return;
+
+        total.textContent = (printPrice + shipping.amount).toFixed(2);
+        detail.textContent = `Œuvre ${printPrice.toFixed(2)} € + ${shipping.label} ${shipping.amount.toFixed(2)} €.`;
+        startPrintCheckout(data.id, selectedZone, printContainer);
+      });
     }
 
     if(data.price_digital){
       document.getElementById('digital-block').style.display = 'block';
       document.getElementById('digital-price').textContent = data.price_digital;
-      startDigitalCheckout(data.id, document.getElementById('paypal-digital-button'));
+      const digitalConsent = document.getElementById('digital-withdrawal-consent');
+      const digitalContainer = document.getElementById('paypal-digital-button');
+      let isDigitalCheckoutReady = false;
+
+      digitalConsent.addEventListener('change', () => {
+        if (!digitalConsent.checked) {
+          digitalContainer.textContent = '';
+          isDigitalCheckoutReady = false;
+          return;
+        }
+
+        if (!isDigitalCheckoutReady) {
+          isDigitalCheckoutReady = true;
+          startDigitalCheckout(data.id, digitalContainer, () => digitalConsent.checked);
+        }
+      });
     }
 
     document.getElementById('content-loading').style.display = 'none';

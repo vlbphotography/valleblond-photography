@@ -593,7 +593,7 @@ async function renderOrders(user) {
 
     const [digitalResult, printResult] = await Promise.all([
         supabaseClient.from("digital_orders").select("buyer_email, amount, currency, status, created_at, Artworks(title)").order("created_at", { ascending: false }),
-        supabaseClient.from("print_orders").select("buyer_email, amount, currency, status, created_at, shipping_address, Artworks(title)").order("created_at", { ascending: false })
+        supabaseClient.from("print_orders").select("buyer_email, amount, currency, status, created_at, shipping_address, shipping_zone, shipping_amount, Artworks(title)").order("created_at", { ascending: false })
     ]);
 
     if (digitalResult.error && printResult.error) {
@@ -632,6 +632,15 @@ async function renderOrders(user) {
                 ? `Livraison : ${recipient ? `${recipient}, ` : ""}${[address.address_line_1, address.address_line_2, address.postal_code, address.admin_area_2, address.country_code].filter(Boolean).join(", ")}`
                 : "Adresse de livraison à confirmer avec l’acheteur.";
             row.append(delivery);
+
+            if (order.shipping_zone) {
+                const shipping = document.createElement("p");
+                shipping.className = "studio-order-delivery";
+                shipping.style.margin = "4px 0 0";
+                shipping.style.color = "var(--slate-soft)";
+                shipping.textContent = `${order.shipping_zone} · frais de livraison ${Number(order.shipping_amount || 0).toFixed(2)} €`;
+                row.append(shipping);
+            }
         }
 
         list.append(row);

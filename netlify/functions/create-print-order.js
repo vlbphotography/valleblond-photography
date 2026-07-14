@@ -2,6 +2,15 @@ const paypalBaseUrl = process.env.PAYPAL_ENVIRONMENT === "live"
   ? "https://api-m.paypal.com"
   : "https://api-m.sandbox.paypal.com";
 
+// Tirage A3 non encadré, colis inférieur à 500 g. Les montants comprennent
+// l'emballage et sont présentés au client avant qu'il ouvre PayPal.
+const shippingOptions = {
+  france: { label: "Colissimo France", amount: 9 },
+  europe: { label: "Colissimo Europe", amount: 17 },
+  uk: { label: "Colissimo Royaume-Uni", amount: 23 },
+  world: { label: "Colissimo international", amount: 39 }
+};
+
 function errorResponse(message, status = 500) {
   return Response.json({ error: message }, { status });
 }
@@ -40,8 +49,10 @@ export default async (request) => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
   try {
-    const { artworkId } = await request.json();
+    const { artworkId, shippingZone } = await request.json();
     if (!artworkId) return errorResponse("Œuvre introuvable.", 400);
+    const shipping = shippingOptions[shippingZone];
+    if (!shipping) return errorResponse("Choisissez une zone de livraison valide.", 400);
 
     const serviceKey = getServiceRoleKey();
     const artworkResponse = await fetch(
@@ -50,10 +61,11 @@ export default async (request) => {
     );
     const artworks = await artworkResponse.json();
     const artwork = artworks[0];
-    const amount = Number(artwork?.price_physical);
+    const artworkAmount = Number(artwork?.price_physical);
+    const amount = artworkAmount + shipping.amount;
 
     if (!artworkResponse.ok) return errorResponse("Catalogue indisponible.");
-    if (!Number.isFinite(amount) || amount <= 0) return errorResponse("Cette œuvre n’est pas disponible en tirage.", 404);
+    if (!Number.isFinite(artworkAmount) || artworkAmount <= 0) return errorResponse("Cette œuvre n’est pas disponible en tirage.", 404);
 
     const accessToken = await getPayPalAccessToken();
     const orderResponse = await fetch(`${paypalBaseUrl}/v2/checkout/orders`, {
@@ -74,8 +86,10 @@ export default async (request) => {
           }
         },
         purchase_units: [{
-          custom_id: artwork.id,
-          description: `Tirage — ${artwork.title}`,
+          // La zone est liée à la commande PayPal afin que le serveur puisse
+          // enregistrer le détail du prix après la capture.
+          custom_id: `${artwork.id}:${shippingZone}`,
+          description: `Tirage — ${artwork.title} (${shipping.label})`,
           amount: { currency_code: "EUR", value: amount.toFixed(2) }
         }]
       })

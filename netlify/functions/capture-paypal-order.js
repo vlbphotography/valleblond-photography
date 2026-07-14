@@ -8,6 +8,26 @@ export default async (request) => {
   const unit = order.purchase_units[0];
   const capture = unit.payments.captures[0];
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  await fetch(`${process.env.SUPABASE_URL}/rest/v1/digital_orders`, { method: "POST", headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates" }, body: JSON.stringify({ artwork_id: unit.custom_id, paypal_order_id: order.id, paypal_capture_id: capture.id, buyer_email: order.payer?.email_address, amount: capture.amount.value, currency: capture.amount.currency_code, status: "completed", completed_at: new Date().toISOString() }) });
+  const saveOrder = await fetch(`${process.env.SUPABASE_URL}/rest/v1/digital_orders?paypal_order_id=eq.${encodeURIComponent(order.id)}`, {
+    method: "PATCH",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      paypal_capture_id: capture.id,
+      buyer_email: order.payer?.email_address,
+      amount: capture.amount.value,
+      currency: capture.amount.currency_code,
+      status: "completed",
+      completed_at: new Date().toISOString()
+    })
+  });
+  if (!saveOrder.ok) {
+    const error = await saveOrder.json().catch(() => ({}));
+    return Response.json({ error: `Paiement confirmé, mais commande non enregistrée : ${error.message || saveOrder.status}` }, { status: 500 });
+  }
+
   return Response.json({ success: true });
 };

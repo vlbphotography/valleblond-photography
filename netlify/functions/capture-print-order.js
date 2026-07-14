@@ -2,6 +2,13 @@ const paypalBaseUrl = process.env.PAYPAL_ENVIRONMENT === "live"
   ? "https://api-m.paypal.com"
   : "https://api-m.sandbox.paypal.com";
 
+const shippingOptions = {
+  france: { label: "Colissimo France", amount: 9 },
+  europe: { label: "Colissimo Europe", amount: 17 },
+  uk: { label: "Colissimo Royaume-Uni", amount: 23 },
+  world: { label: "Colissimo international", amount: 39 }
+};
+
 function errorResponse(message, status = 500) {
   return Response.json({ error: message }, { status });
 }
@@ -50,9 +57,11 @@ export default async (request) => {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     const orderDetails = await orderDetailsResponse.json();
-    const artworkId = orderDetails.purchase_units?.[0]?.custom_id;
+    const customId = orderDetails.purchase_units?.[0]?.custom_id;
+    const [artworkId, shippingZone] = String(customId || "").split(":");
+    const shipping = shippingOptions[shippingZone];
 
-    if (!orderDetailsResponse.ok || !artworkId) {
+    if (!orderDetailsResponse.ok || !artworkId || !shipping) {
       return errorResponse("Commande PayPal invalide.", 422);
     }
 
@@ -68,7 +77,7 @@ export default async (request) => {
       return errorResponse("Paiement non confirmé.", 422);
     }
 
-    const saveResponse = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/record_print_order`, {
+    const saveResponse = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/record_print_order_with_shipping`, {
       method: "POST",
       headers: {
         apikey: serviceKey,
@@ -83,6 +92,8 @@ export default async (request) => {
         p_amount: capture.amount.value,
         p_currency: capture.amount.currency_code,
         p_shipping_address: unit.shipping || null,
+        p_shipping_zone: shipping.label,
+        p_shipping_amount: shipping.amount,
         p_completed_at: new Date().toISOString()
       })
     });

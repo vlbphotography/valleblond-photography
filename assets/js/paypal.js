@@ -28,7 +28,15 @@ async function requestCheckout(endpoint, body) {
   return data;
 }
 
-async function startCheckout({ artworkId, container, createEndpoint, captureEndpoint, successMessage }) {
+async function startCheckout({
+  artworkId,
+  container,
+  createEndpoint,
+  captureEndpoint,
+  successMessage,
+  canCheckout = () => true,
+  createRequestBody = () => ({ artworkId })
+}) {
   if (!CONFIG.PAYPAL_CLIENT_ID) {
     container.textContent = "Paiement indisponible pour le moment.";
     return;
@@ -39,7 +47,11 @@ async function startCheckout({ artworkId, container, createEndpoint, captureEndp
 
     await paypal.Buttons({
       createOrder: async () => {
-        const data = await requestCheckout(createEndpoint, { artworkId });
+        if (!canCheckout()) {
+          throw new Error("Veuillez confirmer la fourniture immédiate du fichier numérique.");
+        }
+
+        const data = await requestCheckout(createEndpoint, createRequestBody());
         if (!data.id) throw new Error("La commande n’a pas pu être créée.");
         return data.id;
       },
@@ -58,22 +70,31 @@ async function startCheckout({ artworkId, container, createEndpoint, captureEndp
   }
 }
 
-function startDigitalCheckout(artworkId, container) {
+function startDigitalCheckout(artworkId, container, canCheckout) {
   return startCheckout({
     artworkId,
     container,
     createEndpoint: "/.netlify/functions/create-paypal-order",
     captureEndpoint: "/.netlify/functions/capture-paypal-order",
-    successMessage: "Paiement confirmé. Vous recevrez votre fichier par email."
+    successMessage: "Paiement confirmé. Votre demande d’envoi immédiat est enregistrée. Vous recevrez votre fichier par email.",
+    canCheckout,
+    createRequestBody: () => ({
+      artworkId,
+      immediateDeliveryConsent: true
+    })
   });
 }
 
-function startPrintCheckout(artworkId, container) {
+function startPrintCheckout(artworkId, shippingZone, container) {
   return startCheckout({
     artworkId,
     container,
     createEndpoint: "/.netlify/functions/create-print-order",
     captureEndpoint: "/.netlify/functions/capture-print-order",
-    successMessage: "Commande confirmée. Nous vous contacterons pour la livraison."
+    successMessage: "Commande confirmée. Vous recevrez le suivi de votre expédition par email.",
+    createRequestBody: () => ({
+      artworkId,
+      shippingZone
+    })
   });
 }
