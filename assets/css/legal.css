@@ -1,0 +1,106 @@
+/* ============================================================
+   Valleblond Photography — Pages légales
+   Une typographie calme et lisible, cohérente avec la galerie.
+   ============================================================ */
+
+:root {
+    --legal-paper: #f8f7f4;
+    --legal-ink: #1c1c1c;
+    --legal-muted: #666;
+    --legal-line: #dedbd3;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    background: var(--legal-paper);
+    color: var(--legal-ink);
+    font-family: "Work Sans", Arial, sans-serif;
+    line-height: 1.7;
+    margin: 0;
+}
+
+.legal-page {
+    margin: 0 auto;
+    max-width: 52rem;
+    padding: clamp(2rem, 7vw, 5rem) 1.5rem;
+}
+
+.legal-back,
+.legal-nav a,
+.legal-content a {
+    color: inherit;
+}
+
+.legal-back {
+    color: var(--legal-muted);
+    text-decoration: none;
+}
+
+.legal-back:hover,
+.legal-nav a:hover,
+.legal-content a:hover {
+    text-decoration-thickness: 2px;
+}
+
+.legal-eyebrow {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    margin: 3.5rem 0 0.5rem;
+}
+
+.legal-title,
+.legal-content h2 {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 400;
+}
+
+.legal-title {
+    font-size: clamp(2.8rem, 8vw, 5rem);
+    letter-spacing: -0.04em;
+    line-height: 1;
+    margin: 0;
+}
+
+.legal-updated {
+    color: var(--legal-muted);
+    margin: 1.25rem 0 3.5rem;
+}
+
+.legal-content {
+    border-top: 1px solid var(--legal-line);
+}
+
+.legal-content section {
+    border-bottom: 1px solid var(--legal-line);
+    padding: 2rem 0;
+}
+
+.legal-content h2 {
+    font-size: 1.7rem;
+    line-height: 1.2;
+    margin: 0 0 1rem;
+}
+
+.legal-content p,
+.legal-content ul { margin: 0 0 1rem; }
+.legal-content p:last-child,
+.legal-content ul:last-child { margin-bottom: 0; }
+.legal-content ul { padding-left: 1.25rem; }
+
+.legal-note {
+    color: var(--legal-muted);
+    font-size: 0.92rem;
+}
+
+.legal-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem 1.5rem;
+    margin-top: 2rem;
+}
+
+@media (max-width: 36rem) {
+    .legal-eyebrow { margin-top: 2.5rem; }
+}
