@@ -6,6 +6,19 @@ function errorResponse(message, status = 500) {
   return Response.json({ error: message }, { status });
 }
 
+// Les fonctions de paiement nécessitent la clé JWT legacy service_role.
+function getServiceRoleKey() {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  try {
+    const payload = JSON.parse(Buffer.from(key.split(".")[1], "base64url").toString());
+    if (payload.role !== "service_role") throw new Error("Rôle Supabase incorrect");
+    return key;
+  } catch (error) {
+    throw new Error("La clé serveur Supabase de Netlify n’est pas une clé service_role valide.");
+  }
+}
+
 async function getPayPalAccessToken() {
   const credentials = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString("base64");
   const response = await fetch(`${paypalBaseUrl}/v1/oauth2/token`, {
@@ -28,6 +41,7 @@ export default async (request) => {
   try {
     const { orderId } = await request.json();
     if (!orderId) return errorResponse("Commande introuvable.", 400);
+    const serviceKey = getServiceRoleKey();
 
     const accessToken = await getPayPalAccessToken();
     const captureResponse = await fetch(`${paypalBaseUrl}/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {
@@ -42,7 +56,6 @@ export default async (request) => {
       return errorResponse("Paiement non confirmé.", 422);
     }
 
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const saveResponse = await fetch(`${process.env.SUPABASE_URL}/rest/v1/print_orders`, {
       method: "POST",
       headers: {

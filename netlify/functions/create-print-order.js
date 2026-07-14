@@ -6,6 +6,20 @@ function errorResponse(message, status = 500) {
   return Response.json({ error: message }, { status });
 }
 
+// Les fonctions de paiement nécessitent la clé JWT legacy service_role.
+// Cette vérification évite de créer un paiement si Netlify a une mauvaise clé.
+function getServiceRoleKey() {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  try {
+    const payload = JSON.parse(Buffer.from(key.split(".")[1], "base64url").toString());
+    if (payload.role !== "service_role") throw new Error("Rôle Supabase incorrect");
+    return key;
+  } catch (error) {
+    throw new Error("La clé serveur Supabase de Netlify n’est pas une clé service_role valide.");
+  }
+}
+
 async function getPayPalAccessToken() {
   const credentials = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString("base64");
   const response = await fetch(`${paypalBaseUrl}/v1/oauth2/token`, {
@@ -29,7 +43,7 @@ export default async (request) => {
     const { artworkId } = await request.json();
     if (!artworkId) return errorResponse("Œuvre introuvable.", 400);
 
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const serviceKey = getServiceRoleKey();
     const artworkResponse = await fetch(
       `${process.env.SUPABASE_URL}/rest/v1/Artworks?id=eq.${encodeURIComponent(artworkId)}&is_published=eq.true&select=id,title,price_physical`,
       { headers: { apikey: serviceKey } }
@@ -72,6 +86,6 @@ export default async (request) => {
     return Response.json({ id: order.id });
   } catch (error) {
     console.error("create-print-order", error);
-    return errorResponse("Paiement indisponible pour le moment.");
+    return errorResponse(error.message || "Paiement indisponible pour le moment.");
   }
 };
