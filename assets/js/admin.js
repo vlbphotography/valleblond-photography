@@ -89,6 +89,7 @@ function renderStudioShell(user, activeView, content) {
                     <button class="${activeView === "artworks" ? "is-active" : ""}" data-view="artworks" type="button" ${activeView === "artworks" ? 'aria-current="page"' : ""}>Œuvres</button>
                     <button class="${activeView === "artwork" ? "is-active" : ""}" data-view="artwork" type="button" ${activeView === "artwork" ? 'aria-current="page"' : ""}>Créer une œuvre</button>
                     <button class="${activeView === "uploads" ? "is-active" : ""}" data-view="uploads" type="button" ${activeView === "uploads" ? 'aria-current="page"' : ""}>Ajouter une preview</button>
+                    <button class="${activeView === "orders" ? "is-active" : ""}" data-view="orders" type="button" ${activeView === "orders" ? 'aria-current="page"' : ""}>Commandes</button>
                     <button type="button" disabled title="Disponible au sprint Collections">Collections</button>
                 </nav>
                 <button class="logout-button" id="logout-button" type="button">Se déconnecter</button>
@@ -116,6 +117,11 @@ function renderStudioShell(user, activeView, content) {
 
             if (button.dataset.view === "artworks") {
                 renderArtworkList(user);
+                return;
+            }
+
+            if (button.dataset.view === "orders") {
+                renderOrders(user);
                 return;
             }
 
@@ -578,6 +584,15 @@ function renderArtworkList(user, successMessage = "") {
     }
 
     loadArtworkList(user);
+}
+
+async function renderOrders(user) {
+    renderStudioShell(user, "orders", '<p class="eyebrow">VENTES</p><h1 class="display">Commandes</h1><p class="dashboard-intro">Paiements numériques confirmés.</p><div class="studio-artwork-list" id="orders-list"></div>');
+    const list = document.getElementById("orders-list");
+    const { data, error } = await supabaseClient.from("digital_orders").select("buyer_email, amount, currency, status, created_at, Artworks(title)").order("created_at", { ascending: false });
+    if (error) { list.textContent = "Les commandes sont indisponibles."; return; }
+    if (!data.length) { list.textContent = "Aucune commande pour le moment."; return; }
+    data.forEach((order) => { const row = document.createElement("article"); row.className = "studio-artwork-item"; row.textContent = `${order.Artworks?.title || "Œuvre"} · ${order.amount} ${order.currency} · ${order.buyer_email || "Email indisponible"} · ${formatArtworkDate(order.created_at)}`; list.append(row); });
 }
 
 function openDeleteDialog(user, artwork) {
