@@ -44,6 +44,18 @@ export default async (request) => {
     const serviceKey = getServiceRoleKey();
 
     const accessToken = await getPayPalAccessToken();
+    // PayPal ne renvoie pas toujours custom_id après la capture. On lit la
+    // commande initiale avant le paiement pour relier la vente à son œuvre.
+    const orderDetailsResponse = await fetch(`${paypalBaseUrl}/v2/checkout/orders/${encodeURIComponent(orderId)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const orderDetails = await orderDetailsResponse.json();
+    const artworkId = orderDetails.purchase_units?.[0]?.custom_id;
+
+    if (!orderDetailsResponse.ok || !artworkId) {
+      return errorResponse("Commande PayPal invalide.", 422);
+    }
+
     const captureResponse = await fetch(`${paypalBaseUrl}/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }
@@ -64,7 +76,7 @@ export default async (request) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        p_artwork_id: unit.custom_id,
+        p_artwork_id: artworkId,
         p_paypal_order_id: order.id,
         p_paypal_capture_id: capture.id,
         p_buyer_email: order.payer?.email_address || null,
