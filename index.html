@@ -167,7 +167,7 @@
   <div class="nav-links">
     <a href="#gallery">Galerie</a>
     <a href="pages/apropos.html">À propos</a>
-    <a href="#contact">Contact</a>
+    <a href="pages/contact.html">Contact</a>
   </div>
 </nav>
 
@@ -185,6 +185,14 @@
 </section>
 
 <footer id="contact">
+  <h2>Parlons de votre projet</h2>
+  <form name="contact" method="POST" data-netlify="true" style="max-width:520px;margin:28px auto;display:grid;gap:12px;text-align:left;">
+    <input type="hidden" name="form-name" value="contact">
+    <input name="nom" required placeholder="Votre nom" style="padding:14px;border:1px solid #ccc;background:white;">
+    <input name="email" type="email" required placeholder="Votre email" style="padding:14px;border:1px solid #ccc;background:white;">
+    <textarea name="message" required rows="5" placeholder="Votre message" style="padding:14px;border:1px solid #ccc;background:white;"></textarea>
+    <button class="button" type="submit">ENVOYER LE MESSAGE</button>
+  </form>
   Créé par Valleblond Photography<br>
   <a href="https://instagram.com/vlb_photo_" target="_blank" rel="noopener" style="color:inherit;">Instagram @vlb_photo_</a>
 </footer>
