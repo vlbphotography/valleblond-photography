@@ -13,6 +13,12 @@ create table if not exists public.print_orders (
   completed_at timestamptz
 );
 
+-- Rend le script sûr à relancer si une première version de la table existe déjà.
+alter table public.print_orders add column if not exists paypal_capture_id text unique;
+alter table public.print_orders add column if not exists currency text not null default 'EUR';
+alter table public.print_orders add column if not exists shipping_address jsonb;
+alter table public.print_orders add column if not exists completed_at timestamptz;
+
 alter table public.print_orders enable row level security;
 grant select on public.print_orders to authenticated;
 
