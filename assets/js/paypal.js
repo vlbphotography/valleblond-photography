@@ -85,7 +85,7 @@ function startDigitalCheckout(artworkId, container, canCheckout) {
   });
 }
 
-function startPrintCheckout(artworkId, shippingZone, container) {
+function startPrintCheckout(artworkId, shippingZone, pickupPoint, container) {
   return startCheckout({
     artworkId,
     container,
@@ -94,7 +94,8 @@ function startPrintCheckout(artworkId, shippingZone, container) {
     successMessage: "Commande confirmée. Vous recevrez le suivi de votre expédition par email.",
     createRequestBody: () => ({
       artworkId,
-      shippingZone
+      shippingZone,
+      pickupPoint
     })
   });
 }

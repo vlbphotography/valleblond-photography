@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Finaliser la commande — Valleblond Photography</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--paper:#f8f7f4;--ink:#1c1c1c;--soft:#666;--line:#dedbd3}
+    *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font-family:'Work Sans',sans-serif}
+    main{max-width:1120px;margin:auto;padding:52px 28px 80px}.back{color:var(--soft);text-decoration:none}.eyebrow{letter-spacing:.14em;font-size:.78rem;margin:44px 0 8px}.display{font-family:Fraunces,serif;font-weight:400}
+    h1{font-size:clamp(2.7rem,6vw,4.8rem);line-height:1;margin:0 0 44px}.layout{display:grid;grid-template-columns:1.15fr .85fr;gap:70px;align-items:start}.panel{border-top:1px solid var(--ink);padding-top:24px}.summary{background:#efede7;padding:24px;position:sticky;top:24px}.summary img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;margin-bottom:20px}.summary h2{font-size:1.8rem;margin:0}.summary p{color:var(--soft);line-height:1.6}.choice{display:block;border:1px solid var(--line);padding:17px;margin:12px 0;cursor:pointer}.choice:has(input:checked){border-color:var(--ink);background:#fff}.choice input{margin-right:10px}.field{display:none;margin:14px 0}.field input{width:100%;padding:15px;border:1px solid var(--line);font:inherit;background:#fff}.total{font:400 2.5rem Fraunces,serif;margin:28px 0 4px}.detail{color:var(--soft);font-size:.9rem;line-height:1.6}.terms{display:flex;gap:10px;align-items:flex-start;margin:30px 0;font-size:.9rem;line-height:1.5}.terms a{color:inherit}.paypal{margin-top:18px}.notice{padding:18px;background:#efede7;line-height:1.6}.hidden{display:none}@media(max-width:760px){main{padding:30px 20px 60px}.layout{grid-template-columns:1fr;gap:40px}.summary{position:static;order:-1}}
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="oeuvre.html" id="back-link">← Retour à l’œuvre</a>
+    <p class="eyebrow">VALLEBLOND PHOTOGRAPHY</p>
+    <h1 class="display">Finaliser la commande</h1>
+    <div class="layout" id="checkout" hidden>
+      <section class="panel">
+        <h2 class="display">Livraison</h2>
+        <p class="detail">Choisissez la solution adaptée. Le total affiché est le montant réellement payé.</p>
+        <label class="choice"><input type="radio" name="delivery" value="france"> Colissimo Point Relais — France métropolitaine</label>
+        <div class="field" id="pickup-field"><input id="pickup-point" maxlength="100" placeholder="Nom ou adresse du point relais souhaité"></div>
+        <label class="choice"><input type="radio" name="delivery" value="europe"> Colissimo à domicile — Union européenne et Suisse</label>
+        <label class="choice"><input type="radio" name="delivery" value="uk"> Colissimo à domicile — Royaume-Uni</label>
+        <label class="choice"><input type="radio" name="delivery" value="world"> Colissimo à domicile — reste du monde</label>
+        <label class="choice"><input type="radio" name="delivery" value="local"> Livraison personnelle offerte — rayon de 50 km autour d’Amiens</label>
+        <div class="notice hidden" id="local-notice">La livraison locale est proposée après validation de ta zone par Valleblond. Contactez-nous avant de régler votre commande.</div>
+        <label class="terms"><input type="checkbox" id="terms"><span>J’ai lu et j’accepte les <a href="cgv.html" target="_blank">conditions générales de vente</a>.</span></label>
+        <div id="payment-message" class="detail">Choisissez votre livraison pour voir le total.</div>
+        <div class="paypal" id="paypal-print-button"></div>
+      </section>
+      <aside class="summary"><img id="image" alt=""><h2 class="display" id="title"></h2><p id="format"></p><p class="total" id="total">—</p><p class="detail" id="total-detail"></p></aside>
+    </div>
+    <p id="error" class="notice hidden">Cette œuvre n’est pas disponible à la commande.</p>
+  </main>
+  <script src="../assets/js/config.js"></script><script src="../assets/js/paypal.js"></script>
+  <script>
+    const db=supabase.createClient('https://wanwxjzfxlxunynnmxia.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhbnd4anpmeGx4dW55bm5teGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NTQxNjUsImV4cCI6MjA5OTUzMDE2NX0.B0yzXCKrRrVUVfUMpa_f2fI-TWXQ7VSeaRGIeDwFHaM');
+    const rates={france:{label:'Colissimo Point Relais',amount:9},europe:{label:'Colissimo à domicile',amount:17},uk:{label:'Colissimo à domicile',amount:23},world:{label:'Colissimo à domicile',amount:39}};
+    let artwork;
+    function refresh(){const zone=document.querySelector('input[name="delivery"]:checked')?.value;const pickup=document.getElementById('pickup-point').value.trim();const container=document.getElementById('paypal-print-button');container.textContent='';document.getElementById('pickup-field').style.display=zone==='france'?'block':'none';document.getElementById('local-notice').classList.toggle('hidden',zone!=='local');if(!zone){return}if(zone==='local'){document.getElementById('total').textContent=Number(artwork.price_physical).toFixed(2)+' €';document.getElementById('total-detail').textContent='Œuvre seule · livraison locale offerte après validation.';document.getElementById('payment-message').textContent='Contactez Valleblond pour confirmer la zone de livraison.';return}const shipping=rates[zone], total=Number(artwork.price_physical)+shipping.amount;document.getElementById('total').textContent=total.toFixed(2)+' €';document.getElementById('total-detail').textContent=`Œuvre ${Number(artwork.price_physical).toFixed(2)} € + ${shipping.label} ${shipping.amount.toFixed(2)} €.`;if(!document.getElementById('terms').checked){document.getElementById('payment-message').textContent='Acceptez les CGV pour accéder au paiement.';return}if(zone==='france'&&!pickup){document.getElementById('payment-message').textContent='Indiquez le point relais souhaité.';return}document.getElementById('payment-message').textContent='';startPrintCheckout(artwork.id,zone,pickup,container)}
+    async function load(){const id=new URLSearchParams(location.search).get('id');document.getElementById('back-link').href=`oeuvre.html?id=${encodeURIComponent(id||'')}`;if(!id)return;const {data,error}=await db.from('Artworks').select('*').eq('id',id).eq('is_published',true).single();if(error||!data||!data.price_physical){document.getElementById('error').classList.remove('hidden');return}artwork=data;document.getElementById('image').src=data.image_url;document.getElementById('image').alt=data.title;document.getElementById('title').textContent=data.title;document.getElementById('format').textContent=data.format||'Tirage fine art';document.getElementById('checkout').hidden=false;document.querySelectorAll('input[name="delivery"],#terms,#pickup-point').forEach(el=>el.addEventListener('input',refresh));}
+    window.addEventListener('load',load);
+  </script>
+</body>
+</html>

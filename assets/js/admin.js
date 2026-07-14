@@ -633,6 +633,15 @@ async function renderOrders(user) {
                 : "Adresse de livraison à confirmer avec l’acheteur.";
             row.append(delivery);
 
+            if (order.shipping_address?.pickup_point) {
+                const pickup = document.createElement("p");
+                pickup.className = "studio-order-delivery";
+                pickup.style.margin = "4px 0 0";
+                pickup.style.color = "var(--slate-soft)";
+                pickup.textContent = `Point relais souhaité : ${order.shipping_address.pickup_point}`;
+                row.append(pickup);
+            }
+
             if (order.shipping_zone) {
                 const shipping = document.createElement("p");
                 shipping.className = "studio-order-delivery";

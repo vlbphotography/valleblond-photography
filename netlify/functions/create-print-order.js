@@ -49,10 +49,12 @@ export default async (request) => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
   try {
-    const { artworkId, shippingZone } = await request.json();
+    const { artworkId, shippingZone, pickupPoint } = await request.json();
     if (!artworkId) return errorResponse("Œuvre introuvable.", 400);
     const shipping = shippingOptions[shippingZone];
     if (!shipping) return errorResponse("Choisissez une zone de livraison valide.", 400);
+    const cleanPickupPoint = typeof pickupPoint === "string" ? pickupPoint.trim().slice(0, 100) : "";
+    if (shippingZone === "france" && !cleanPickupPoint) return errorResponse("Indiquez le point relais souhaité.", 400);
 
     const serviceKey = getServiceRoleKey();
     const artworkResponse = await fetch(
@@ -88,7 +90,7 @@ export default async (request) => {
         purchase_units: [{
           // La zone est liée à la commande PayPal afin que le serveur puisse
           // enregistrer le détail du prix après la capture.
-          custom_id: `${artwork.id}:${shippingZone}`,
+          custom_id: Buffer.from(JSON.stringify({ a: artwork.id, z: shippingZone, p: cleanPickupPoint })).toString("base64url"),
           description: `Tirage — ${artwork.title} (${shipping.label})`,
           amount: { currency_code: "EUR", value: amount.toFixed(2) }
         }]

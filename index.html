@@ -171,6 +171,9 @@
     font-size: 0.85rem;
     border-top: 1px solid rgba(0,0,0,0.08);
   }
+  .footer-contact-button { margin: 24px 0 20px; }
+  .footer-credit { margin: 0 0 10px; }
+  .footer-social { color: inherit; }
 </style>
 </head>
 <body>
@@ -200,9 +203,9 @@
 <footer id="contact">
   <h2 style="font-family:'Fraunces',serif;font-weight:400;">Parlons de votre projet</h2>
   <p style="margin:16px auto 0;max-width:36rem;">Pour une question, une demande de tirage ou une collaboration, écrivez-moi directement.</p>
-  <a class="button" href="pages/contact.html">ME CONTACTER</a>
-  Créé par Valleblond Photography<br>
-  <a href="https://instagram.com/vlb_photo_" target="_blank" rel="noopener" style="color:inherit;">Instagram @vlb_photo_</a>
+  <a class="button footer-contact-button" href="pages/contact.html">ME CONTACTER</a>
+  <p class="footer-credit">Créé par Valleblond Photography</p>
+  <a class="footer-social" href="https://instagram.com/vlb_photo_" target="_blank" rel="noopener">Instagram @vlb_photo_</a>
 </footer>
 
 <script>
@@ -231,7 +234,7 @@
       card.className = 'card';
       card.onclick = () => window.location.href = `pages/oeuvre.html?id=${photo.id}`;
       card.innerHTML = `
-        <img src="${photo.image_url}" alt="${photo.title}">
+        <img src="${photo.image_url}" alt="${photo.title}" loading="lazy" decoding="async">
         <h3>${photo.title}</h3>
         ${photo.location ? `<p class="loc">${photo.location}</p>` : ''}
         <a href="pages/oeuvre.html?id=${photo.id}" class="button">DÉCOUVRIR L'ŒUVRE</a>

@@ -58,7 +58,10 @@ export default async (request) => {
     });
     const orderDetails = await orderDetailsResponse.json();
     const customId = orderDetails.purchase_units?.[0]?.custom_id;
-    const [artworkId, shippingZone] = String(customId || "").split(":");
+    let orderReference;
+    try { orderReference = JSON.parse(Buffer.from(String(customId || ""), "base64url").toString()); } catch { orderReference = null; }
+    const artworkId = orderReference?.a;
+    const shippingZone = orderReference?.z;
     const shipping = shippingOptions[shippingZone];
 
     if (!orderDetailsResponse.ok || !artworkId || !shipping) {
@@ -91,7 +94,7 @@ export default async (request) => {
         p_buyer_email: order.payer?.email_address || null,
         p_amount: capture.amount.value,
         p_currency: capture.amount.currency_code,
-        p_shipping_address: unit.shipping || null,
+        p_shipping_address: { ...(unit.shipping || {}), pickup_point: orderReference?.p || null },
         p_shipping_zone: shipping.label,
         p_shipping_amount: shipping.amount,
         p_completed_at: new Date().toISOString()
