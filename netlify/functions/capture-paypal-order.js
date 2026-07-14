@@ -1,9 +1,15 @@
+// Doit rester synchronisé avec create-paypal-order.js : une commande créée
+// dans un environnement PayPal ne peut être capturée que dans celui-ci.
+const paypalBaseUrl = process.env.PAYPAL_ENVIRONMENT === "live"
+  ? "https://api-m.paypal.com"
+  : "https://api-m.sandbox.paypal.com";
+
 export default async (request) => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
   const { orderId } = await request.json();
   const auth = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString("base64");
-  const token = await fetch("https://api-m.sandbox.paypal.com/v1/oauth2/token", { method: "POST", headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" }, body: "grant_type=client_credentials" }).then((r) => r.json());
-  const order = await fetch(`https://api-m.sandbox.paypal.com/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, { method: "POST", headers: { Authorization: `Bearer ${token.access_token}`, "Content-Type": "application/json" } }).then((r) => r.json());
+  const token = await fetch(`${paypalBaseUrl}/v1/oauth2/token`, { method: "POST", headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" }, body: "grant_type=client_credentials" }).then((r) => r.json());
+  const order = await fetch(`${paypalBaseUrl}/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, { method: "POST", headers: { Authorization: `Bearer ${token.access_token}`, "Content-Type": "application/json" } }).then((r) => r.json());
   if (order.status !== "COMPLETED") return Response.json({ error: "Paiement non confirmé" }, { status: 422 });
   const unit = order.purchase_units[0];
   const capture = unit.payments.captures[0];
