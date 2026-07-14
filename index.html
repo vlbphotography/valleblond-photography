@@ -137,13 +137,16 @@
     width: 100%;
   }
   .card-media {
+    aspect-ratio: 3 / 4;
     background: #ECEAE4;
     overflow: hidden;
   }
   .card img {
     width: 100%;
-    height: auto;
+    height: 100%;
     display: block;
+    object-fit: cover;
+    object-position: center;
     transition: transform 0.9s ease;
   }
   .card:hover .card-media img {
@@ -154,15 +157,17 @@
     font-family: 'Fraunces', serif;
     font-size: clamp(1.3rem, 1.8vw, 1.6rem);
     line-height: 1.2;
+    min-height: 2.4em;
   }
   .card p.loc {
     color: #666;
     margin: 8px 0 0;
     font-size: 0.95rem;
+    min-height: 1.7em;
   }
   .button {
     align-self: flex-start;
-    margin-top: auto;
+    margin-top: 22px;
     padding: 16px 28px;
     background: transparent;
     color: var(--ink);
@@ -191,10 +196,11 @@
   .footer-social { color: inherit; }
   .footer-legal { display:flex; flex-wrap:wrap; gap:8px 18px; justify-content:center; margin:22px 0 0; }
   .footer-legal a { color:inherit; font-size:0.78rem; }
-  /* Les paysages deviennent des œuvres panoramiques sur les grands écrans.
-     Aucun cadrage n’est coupé : seule leur place dans la grille évolue. */
-  @media (min-width: 821px) {
+  /* Les paysages deviennent des œuvres panoramiques. La galerie emploie un
+     recadrage de présentation ; le format intégral reste sur la fiche œuvre. */
+  @media (min-width: 521px) {
     .card--landscape { grid-column: span 2; }
+    .card--landscape .card-media { aspect-ratio: 5 / 3; }
   }
   @media (max-width: 1200px) {
     .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -275,7 +281,7 @@
           <img src="${photo.image_url}" alt="${photo.title}" loading="lazy" decoding="async">
         </div>
         <h3>${photo.title}</h3>
-        ${photo.location ? `<p class="loc">${photo.location}</p>` : ''}
+        <p class="loc">${photo.location || '&nbsp;'}</p>
         <a href="pages/oeuvre.html?id=${photo.id}" class="button">DÉCOUVRIR L'ŒUVRE</a>
       `;
 
