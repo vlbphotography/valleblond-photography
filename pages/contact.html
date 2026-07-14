@@ -1,1 +1,73 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Contact — Valleblond Photography</title><link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet"><style>body{margin:0;background:#f8f7f4;color:#1c1c1c;font-family:'Work Sans',sans-serif}main{max-width:720px;margin:auto;padding:10vh 24px}a{color:inherit}h1{font:400 clamp(3rem,9vw,6rem) Fraunces,serif;margin:20px 0}p{color:#666;line-height:1.7}form{display:grid;gap:14px;margin-top:42px}input,textarea{padding:16px;border:1px solid #ccc;background:white;font:inherit}button{padding:17px;background:#1c1c1c;color:white;border:0;font:inherit;cursor:pointer}</style></head><body><main><a href="../index.html">← Retour à la galerie</a><p>VALLEBLOND PHOTOGRAPHY</p><h1>Contact</h1><p>Une question, un projet ou une demande de tirage ? Écrivez-moi.</p><form name="contact" method="POST" data-netlify="true"><input type="hidden" name="form-name" value="contact"><input name="nom" required placeholder="Votre nom"><input name="email" type="email" required placeholder="Votre email"><textarea name="message" rows="6" required placeholder="Votre message"></textarea><button type="submit">Envoyer le message</button></form></main></body></html>
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Contact — Valleblond Photography</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body{margin:0;background:#f8f7f4;color:#1c1c1c;font-family:'Work Sans',sans-serif}
+    main{max-width:720px;margin:auto;padding:10vh 24px}
+    a{color:inherit}
+    h1{font:400 clamp(3rem,9vw,6rem) Fraunces,serif;margin:20px 0}
+    p{color:#666;line-height:1.7}
+    form{display:grid;gap:14px;margin-top:42px}
+    input,textarea{padding:16px;border:1px solid #ccc;background:white;font:inherit}
+    button{padding:17px;background:#1c1c1c;color:white;border:0;font:inherit;cursor:pointer}
+    button:disabled{cursor:wait;opacity:.65}
+    .form-message{display:none;margin-top:28px;padding:22px;background:#eceae4;color:#1c1c1c;font-size:1.05rem}
+    .form-message.is-visible{display:block}
+  </style>
+</head>
+<body>
+  <main>
+    <a href="../index.html">← Retour à la galerie</a>
+    <p>VALLEBLOND PHOTOGRAPHY</p>
+    <h1>Contact</h1>
+    <p>Une question, un projet ou une demande de tirage ? Écrivez-moi.</p>
+
+    <form name="contact" method="POST" data-netlify="true" id="contact-form">
+      <input type="hidden" name="form-name" value="contact">
+      <input name="nom" required placeholder="Votre nom">
+      <input name="email" type="email" required placeholder="Votre email">
+      <textarea name="message" rows="6" required placeholder="Votre message"></textarea>
+      <button type="submit">Envoyer le message</button>
+    </form>
+
+    <p class="form-message" id="form-message" role="status" aria-live="polite"></p>
+  </main>
+
+  <script>
+    // Envoie le formulaire à Netlify sans quitter la page.
+    const form = document.getElementById('contact-form');
+    const message = document.getElementById('form-message');
+    const submitButton = form.querySelector('button[type="submit"]');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      submitButton.disabled = true;
+      submitButton.textContent = 'Envoi en cours…';
+
+      try {
+        const response = await fetch('/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(new FormData(form)).toString()
+        });
+
+        if (!response.ok) throw new Error('Formulaire non envoyé');
+
+        form.reset();
+        form.hidden = true;
+        message.textContent = 'Votre message a bien été envoyé. Je vous répondrai dès que possible.';
+        message.classList.add('is-visible');
+      } catch (error) {
+        message.textContent = 'Votre message n’a pas pu être envoyé. Veuillez réessayer.';
+        message.classList.add('is-visible');
+        submitButton.disabled = false;
+        submitButton.textContent = 'Envoyer le message';
+      }
+    });
+  </script>
+</body>
+</html>
