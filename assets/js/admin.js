@@ -586,15 +586,103 @@ function renderArtworkList(user, successMessage = "") {
     loadArtworkList(user);
 }
 
-async function renderOrders(user) {
-    renderStudioShell(user, "orders", '<p class="eyebrow">VENTES</p><h1 class="display">Commandes</h1><p class="dashboard-intro">Paiements confirmés. Les tirages incluent l’adresse de livraison communiquée dans PayPal.</p><div class="studio-artwork-list" id="orders-list"></div>');
-    const list = document.getElementById("orders-list");
-    list.textContent = "Chargement des commandes…";
+function localDeliveryStatus(status) {
+    return {
+        requested: "À valider",
+        approved: "Zone validée · paiement à la remise",
+        rejected: "Refusée",
+        paid_in_person: "Payée en main propre",
+        delivered: "Livrée"
+    }[status] || status;
+}
 
-    const [digitalResult, printResult] = await Promise.all([
+async function processLocalDeliveryRequest(user, requestId, action) {
+    const { error } = await supabaseClient.rpc("process_local_delivery_request", {
+        p_request_id: requestId,
+        p_action: action
+    });
+
+    if (error) {
+        console.error("Impossible de traiter la livraison locale :", error);
+        alert("Cette action n’a pas pu être enregistrée. Réessayez.");
+        return;
+    }
+
+    renderOrders(user);
+}
+
+function createLocalDeliveryAction(user, request, label, action) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn";
+    button.textContent = label;
+    button.addEventListener("click", () => processLocalDeliveryRequest(user, request.id, action));
+    return button;
+}
+
+function renderLocalDeliveryRequests(user, requests, error) {
+    const list = document.getElementById("local-delivery-list");
+
+    if (error) {
+        list.textContent = "Les demandes locales seront disponibles après l’activation de la fonctionnalité.";
+        return;
+    }
+
+    if (!requests.length) {
+        list.textContent = "Aucune demande de livraison locale pour le moment.";
+        return;
+    }
+
+    list.replaceChildren();
+
+    requests.forEach((request) => {
+        const row = document.createElement("article");
+        const summary = document.createElement("p");
+        const details = document.createElement("p");
+        const status = document.createElement("p");
+        const actions = document.createElement("div");
+
+        row.className = "studio-order-item";
+        summary.className = "studio-order-summary";
+        details.className = "studio-order-delivery";
+        status.className = "studio-order-delivery";
+        actions.className = "artwork-item-actions";
+
+        summary.textContent = `Livraison personnelle · ${request.Artworks?.title || "Œuvre"} · ${request.buyer_name} · ${request.buyer_email} · ${formatArtworkDate(request.created_at)}`;
+        details.textContent = `Adresse à vérifier : ${[request.address_line, request.postal_code, request.city].filter(Boolean).join(", ")}${request.buyer_phone ? ` · ${request.buyer_phone}` : ""}`;
+        status.textContent = `Statut : ${localDeliveryStatus(request.status)}`;
+        row.append(summary, details, status);
+
+        if (request.status === "requested") {
+            actions.append(
+                createLocalDeliveryAction(user, request, "Valider la zone", "approve"),
+                createLocalDeliveryAction(user, request, "Refuser", "reject")
+            );
+        } else if (request.status === "approved") {
+            actions.append(createLocalDeliveryAction(user, request, "Confirmer le paiement reçu", "mark_paid_in_person"));
+        } else if (request.status === "paid_in_person") {
+            actions.append(createLocalDeliveryAction(user, request, "Marquer comme livrée", "mark_delivered"));
+        }
+
+        if (actions.childElementCount) row.append(actions);
+        list.append(row);
+    });
+}
+
+async function renderOrders(user) {
+    renderStudioShell(user, "orders", '<p class="eyebrow">VENTES</p><h1 class="display">Commandes</h1><p class="dashboard-intro">Les demandes de livraison personnelle sont validées ici avant toute remise. Un paiement en main propre est confirmé uniquement lorsque vous l’avez réellement reçu.</p><section><p class="eyebrow">LIVRAISONS LOCALES</p><div class="studio-artwork-list" id="local-delivery-list"></div></section><section><p class="eyebrow">PAIEMENTS CONFIRMÉS</p><div class="studio-artwork-list" id="orders-list"></div></section>');
+    const list = document.getElementById("orders-list");
+    const localList = document.getElementById("local-delivery-list");
+    list.textContent = "Chargement des commandes…";
+    localList.textContent = "Chargement des demandes…";
+
+    const [digitalResult, printResult, localResult] = await Promise.all([
         supabaseClient.from("digital_orders").select("buyer_email, amount, currency, status, created_at, Artworks(title)").order("created_at", { ascending: false }),
-        supabaseClient.from("print_orders").select("buyer_email, amount, currency, status, created_at, shipping_address, shipping_zone, shipping_amount, Artworks(title)").order("created_at", { ascending: false })
+        supabaseClient.from("print_orders").select("buyer_email, amount, currency, status, created_at, shipping_address, shipping_zone, shipping_amount, Artworks(title)").order("created_at", { ascending: false }),
+        supabaseClient.from("local_delivery_requests").select("id, buyer_name, buyer_email, buyer_phone, address_line, postal_code, city, payment_preference, payment_method, status, created_at, Artworks(title)").order("created_at", { ascending: false })
     ]);
+
+    renderLocalDeliveryRequests(user, localResult.data || [], localResult.error);
 
     if (digitalResult.error && printResult.error) {
         list.textContent = "Les commandes sont indisponibles.";
