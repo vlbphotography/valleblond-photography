@@ -28,7 +28,10 @@ export default async (request) => {
         authorizationUrl.searchParams.set("redirect_uri", redirectUri);
         authorizationUrl.searchParams.set("state", state);
         authorizationUrl.searchParams.set("response_type", "code");
-        authorizationUrl.searchParams.set("scope", "pages_show_list,pages_read_engagement,instagram_basic");
+        // business_management est nécessaire lorsque la Page est rattachée à
+        // un portefeuille professionnel Meta ; sans elle, Facebook masque la
+        // liaison Instagram pourtant valide dans la réponse API.
+        authorizationUrl.searchParams.set("scope", "pages_show_list,pages_read_engagement,instagram_basic,business_management");
 
         return json({ authorizationUrl: authorizationUrl.toString() });
     } catch (error) {
