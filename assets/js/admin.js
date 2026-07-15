@@ -1260,7 +1260,7 @@ function renderTelegramAlerts(user) {
         <section class="instagram-panel">
             <h2 class="display">Valleblond Monitor</h2>
             <p class="dashboard-intro">Le bot te prévient immédiatement lors d’une vente numérique, d’une commande de tirage ou d’une demande de livraison locale. Les alertes Telegram ne bloquent jamais un paiement.</p>
-            <button class="btn btn-primary" id="telegram-test" type="button">Envoyer un message de test</button>
+            <button class="btn btn-primary" id="telegram-test" type="button">Tester le bot Telegram</button>
             <p class="form-message" id="telegram-message" aria-live="polite"></p>
         </section>
     `);
@@ -1275,12 +1275,12 @@ function renderTelegramAlerts(user) {
         try {
             await studioRequest("/.netlify/functions/telegram-test", "POST");
             message.classList.add("is-success");
-            message.textContent = "Message envoyé. Vérifie Telegram.";
+            message.textContent = "Test envoyé. Ouvre Telegram puis appuie sur « Tester le bot NAS ».";
         } catch (error) {
             message.textContent = error.message || "Le message de test n’a pas pu être envoyé.";
         } finally {
             button.disabled = false;
-            button.textContent = "Envoyer un message de test";
+            button.textContent = "Tester le bot Telegram";
         }
     });
 }

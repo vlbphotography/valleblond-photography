@@ -8,7 +8,16 @@ export default async (request) => {
 
   try {
     await requireStudioAdmin(request);
-    const sent = await sendTelegramAlert("✅ Valleblond Monitor est connecté. Les alertes de vente et de livraison sont actives.");
+    const sent = await sendTelegramAlert(
+      "🧪 Test Valleblond Monitor\n\nCe test ne crée aucune commande, aucun paiement et aucune donnée client.",
+      {
+        replyMarkup: {
+          inline_keyboard: [[
+            { text: "Tester le bot NAS", callback_data: "valleblond:test:ping" }
+          ]]
+        }
+      }
+    );
     if (!sent) return json({ error: "Telegram n’est pas encore configuré dans Netlify." }, 400);
     return json({ success: true });
   } catch (error) {

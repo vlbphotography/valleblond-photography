@@ -117,6 +117,14 @@ def process_callback(callback):
         return
 
     payload = callback.get("data", "")
+
+    # Test sans commande : ce bouton est généré depuis le Studio et sert
+    # uniquement à vérifier que le NAS reçoit bien les interactions Telegram.
+    if payload == "valleblond:test:ping":
+        answer_callback(callback["id"], "Bot NAS actif.")
+        send("✅ Test réussi : Valleblond Monitor reçoit bien tes commandes Telegram.")
+        return
+
     parts = payload.split(":")
     if len(parts) != 3 or parts[0] != "local":
         answer_callback(callback["id"], "Commande inconnue.")

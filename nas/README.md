@@ -15,6 +15,13 @@ minutes. Il n'utilise aucune dépendance Python externe.
 Le bot est alors autonome et compatible avec ton organisation actuelle :
 le watchdog peut surveiller son processus, comme tes autres bots Python.
 
+## Vérification sans commande
+
+Dans le Studio, ouvrir `Alertes` puis cliquer sur `Tester le bot Telegram`.
+Le message reçu contient le bouton `Tester le bot NAS`. Une fois ce bouton
+pressé, le NAS répond par une confirmation. Ce test ne crée jamais de client,
+commande, paiement ou écriture comptable.
+
 ## Variables nécessaires
 
 Dans `valleblond_config.json`, définir :
