@@ -1223,7 +1223,7 @@ async function studioRequest(endpoint, method = "GET") {
         headers: { Authorization: `Bearer ${accessToken}` }
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || "Une erreur est survenue.");
+    if (!response.ok) throw new Error(payload.error || `Le service a renvoyé une erreur (${response.status}).`);
     return payload;
 }
 

@@ -133,6 +133,44 @@ async function importCarousel(media) {
     return { imported: true, artworks: createdArtworks, skipped: false };
 }
 
+async function importMedia(media, result) {
+    try {
+        if (media.media_type === "REELS" || media.media_type === "VIDEO") {
+            result.reels += 1;
+            return;
+        }
+
+        if (media.media_type === "CAROUSEL_ALBUM") {
+            const carousel = await importCarousel(media);
+            result.artworks += carousel.artworks;
+            if (carousel.imported) result.collections += 1;
+            if (carousel.skipped) result.alreadyImported += 1;
+            return;
+        }
+
+        if (!isImage(media)) return;
+        const artwork = await importArtwork(media);
+        if (artwork.created) result.artworks += 1;
+        else result.alreadyImported += 1;
+    } catch (error) {
+        console.error("instagram-sync-media", media.id, error);
+        result.errors.push(media.id);
+    }
+}
+
+async function importMediaInParallel(mediaList, result) {
+    // Les téléchargements sont regroupés par quatre : assez rapide pour la
+    // durée d’exécution Netlify, sans surcharger Storage ni l’API Meta.
+    const pending = [...mediaList];
+    const worker = async () => {
+        while (pending.length) {
+            const media = pending.shift();
+            await importMedia(media, result);
+        }
+    };
+    await Promise.all(Array.from({ length: Math.min(4, pending.length) }, worker));
+}
+
 export default async (request) => {
     if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
@@ -154,30 +192,7 @@ export default async (request) => {
         if (!response.ok) throw new Error(payload.error?.message || "Instagram ne répond pas.");
 
         const result = { artworks: 0, collections: 0, reels: 0, alreadyImported: 0, errors: [] };
-        for (const media of payload.data || []) {
-            try {
-                if (media.media_type === "REELS" || media.media_type === "VIDEO") {
-                    result.reels += 1;
-                    continue;
-                }
-
-                if (media.media_type === "CAROUSEL_ALBUM") {
-                    const carousel = await importCarousel(media);
-                    result.artworks += carousel.artworks;
-                    if (carousel.imported) result.collections += 1;
-                    if (carousel.skipped) result.alreadyImported += 1;
-                    continue;
-                }
-
-                if (!isImage(media)) continue;
-                const artwork = await importArtwork(media);
-                if (artwork.created) result.artworks += 1;
-                else result.alreadyImported += 1;
-            } catch (error) {
-                console.error("instagram-sync-media", media.id, error);
-                result.errors.push(media.id);
-            }
-        }
+        await importMediaInParallel(payload.data || [], result);
 
         await supabaseRequest(`/rest/v1/instagram_connections?studio_user_id=eq.${encodeURIComponent(user.id)}`, {
             method: "PATCH",
