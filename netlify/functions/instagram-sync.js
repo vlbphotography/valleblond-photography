@@ -1,6 +1,6 @@
 import {
     cleanCaption,
-    graphUrl,
+    facebookGraphUrl,
     json,
     publicArtworkUrl,
     requireStudioAdmin,
@@ -142,7 +142,10 @@ export default async (request) => {
         const connection = connections?.[0];
         if (!connection) return json({ error: "Connecte Instagram avant de synchroniser." }, 400);
 
-        const response = await fetch(graphUrl(`${connection.instagram_account_id}/media`, {
+        // Cette synchronisation utilise un jeton de Page Facebook. Les médias
+        // doivent donc être lus via Graph Facebook, et non Graph Instagram
+        // (réservé aux jetons de la connexion Instagram directe).
+        const response = await fetch(facebookGraphUrl(`${connection.instagram_account_id}/media`, {
             fields: "id,caption,media_type,media_url,permalink,timestamp,children{id,media_type,media_url,thumbnail_url}",
             limit: 25,
             access_token: connection.page_access_token
