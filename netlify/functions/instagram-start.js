@@ -1,4 +1,4 @@
-import { json, requireInstagramConfiguration, requireStudioAdmin, supabaseRequest } from "./instagram-utils.js";
+import { facebookAppId, facebookGraphUrl, json, requireInstagramConfiguration, requireStudioAdmin, supabaseRequest } from "./instagram-utils.js";
 
 export default async (request) => {
     if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
@@ -17,14 +17,18 @@ export default async (request) => {
             body: JSON.stringify({ state, studio_user_id: user.id, expires_at: expiresAt })
         });
 
-        // Instagram Login autorise directement le compte professionnel : il ne
-        // passe ni par une Page Facebook ni par Facebook Login for Business.
-        const authorizationUrl = new URL("https://www.instagram.com/oauth/authorize");
-        authorizationUrl.searchParams.set("client_id", process.env.INSTAGRAM_APP_ID);
+        // Le compte Instagram de Valleblond étant relié à une Page Facebook,
+        // Facebook Login est plus stable que le rôle de testeur Instagram de
+        // l'API directe. Seules les Pages administrées par le photographe sont
+        // consultées au retour de l'autorisation.
+        const authorizationUrl = facebookGraphUrl("dialog/oauth");
+        authorizationUrl.host = "www.facebook.com";
+        authorizationUrl.pathname = `/${process.env.INSTAGRAM_GRAPH_API_VERSION || "v24.0"}/dialog/oauth`;
+        authorizationUrl.searchParams.set("client_id", facebookAppId());
         authorizationUrl.searchParams.set("redirect_uri", redirectUri);
         authorizationUrl.searchParams.set("state", state);
         authorizationUrl.searchParams.set("response_type", "code");
-        authorizationUrl.searchParams.set("scope", "instagram_business_basic");
+        authorizationUrl.searchParams.set("scope", "pages_show_list,pages_read_engagement,instagram_basic");
 
         return json({ authorizationUrl: authorizationUrl.toString() });
     } catch (error) {

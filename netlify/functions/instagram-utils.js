@@ -7,6 +7,8 @@
 
 const supabaseUrl = () => process.env.SUPABASE_URL;
 const serviceKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY;
+const facebookAppId = () => process.env.FACEBOOK_APP_ID;
+const facebookAppSecret = () => process.env.FACEBOOK_APP_SECRET;
 // Cette clé est déjà présente dans le JavaScript public du site. Elle ne donne
 // accès qu'aux données explicitement autorisées par les règles Supabase (RLS).
 // Elle sert ici à vérifier la session réelle de l'administrateur, jamais à
@@ -18,13 +20,24 @@ export function json(data, status = 200) {
 }
 
 export function requireInstagramConfiguration() {
-    const missing = ["INSTAGRAM_APP_ID", "INSTAGRAM_APP_SECRET", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
+    const missing = ["FACEBOOK_APP_ID", "FACEBOOK_APP_SECRET", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
         .filter((name) => !process.env[name]);
 
     if (missing.length) {
         throw new Error(`Configuration Instagram incomplète : ${missing.join(", ")}`);
     }
 }
+
+export function facebookGraphUrl(path, parameters = {}) {
+    const version = process.env.INSTAGRAM_GRAPH_API_VERSION || "v24.0";
+    const url = new URL(`https://graph.facebook.com/${version}/${path.replace(/^\//, "")}`);
+    Object.entries(parameters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) url.searchParams.set(key, String(value));
+    });
+    return url;
+}
+
+export { facebookAppId, facebookAppSecret };
 
 export function graphUrl(path, parameters = {}) {
     // La version reste surchargable dans Netlify si Meta en publie une autre.

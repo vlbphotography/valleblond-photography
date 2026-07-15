@@ -1255,7 +1255,7 @@ function renderInstagram(user) {
         title.className = "display";
         title.textContent = "Connecter Instagram";
         text.className = "dashboard-intro";
-        text.textContent = "Autorise une seule fois ton compte Instagram professionnel. Aucun mot de passe ni jeton Instagram ne passe par le Studio.";
+        text.textContent = "Autorise une seule fois Facebook à relier la Page associée à ton compte Instagram professionnel. Aucun mot de passe ni jeton ne passe par le Studio.";
         note.className = "instagram-note";
         note.textContent = "Après la connexion, tu pourras importer les 25 dernières publications photo en un clic.";
         connect.className = "btn btn-primary";

@@ -1,4 +1,4 @@
-import { escapeHtml, graphUrl, requireInstagramConfiguration, supabaseRequest } from "./instagram-utils.js";
+import { escapeHtml, facebookAppId, facebookAppSecret, facebookGraphUrl, requireInstagramConfiguration, supabaseRequest } from "./instagram-utils.js";
 
 function completionPage(success, message) {
     const safeMessage = escapeHtml(message);
@@ -23,44 +23,32 @@ export default async (request) => {
         if (!oauthState) throw new Error("Cette autorisation a expiré. Relance la connexion depuis le Studio.");
 
         const redirectUri = `${url.origin}/.netlify/functions/instagram-callback`;
-        const exchangeBody = new URLSearchParams({
-            client_id: process.env.INSTAGRAM_APP_ID,
-            client_secret: process.env.INSTAGRAM_APP_SECRET,
-            grant_type: "authorization_code",
+        const tokenResponse = await fetch(facebookGraphUrl("oauth/access_token", {
+            client_id: facebookAppId(),
+            client_secret: facebookAppSecret(),
             redirect_uri: redirectUri,
             code
-        });
-        const tokenResponse = await fetch("https://api.instagram.com/oauth/access_token", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: exchangeBody
-        });
-        const shortLivedToken = await tokenResponse.json();
-        if (!tokenResponse.ok || !shortLivedToken.access_token || !shortLivedToken.user_id) {
-            throw new Error(shortLivedToken.error?.message || "Instagram n'a pas fourni de jeton d’accès.");
-        }
-
-        // Un jeton longue durée évite de demander une nouvelle autorisation à
-        // chaque import. Son renouvellement sera ajouté avec la surveillance.
-        const longLivedUrl = new URL("https://graph.instagram.com/access_token");
-        longLivedUrl.searchParams.set("grant_type", "ig_exchange_token");
-        longLivedUrl.searchParams.set("client_secret", process.env.INSTAGRAM_APP_SECRET);
-        longLivedUrl.searchParams.set("access_token", shortLivedToken.access_token);
-        const longLivedResponse = await fetch(longLivedUrl);
-        const longLivedToken = await longLivedResponse.json();
-        if (!longLivedResponse.ok || !longLivedToken.access_token) {
-            throw new Error(longLivedToken.error?.message || "Instagram n'a pas prolongé l’autorisation.");
-        }
-
-        const profileResponse = await fetch(graphUrl(shortLivedToken.user_id, {
-            fields: "user_id,username",
-            access_token: longLivedToken.access_token
         }));
-        const profile = await profileResponse.json();
-        if (!profileResponse.ok || !profile.user_id) throw new Error(profile.error?.message || "Le compte Instagram professionnel n'a pas été reconnu.");
+        const userToken = await tokenResponse.json();
+        if (!tokenResponse.ok || !userToken.access_token) {
+            throw new Error(userToken.error?.message || "Facebook n'a pas fourni de jeton d’accès.");
+        }
 
-        const expiresAt = longLivedToken.expires_in
-            ? new Date(Date.now() + Number(longLivedToken.expires_in) * 1000).toISOString()
+        // Une seule Page liée à Instagram est attendue ici. Cette sélection
+        // explicite empêche d'importer une autre Page administrée par Valentin.
+        const pagesResponse = await fetch(facebookGraphUrl("me/accounts", {
+            fields: "id,name,access_token,instagram_business_account{id,username}",
+            access_token: userToken.access_token
+        }));
+        const pagesPayload = await pagesResponse.json();
+        if (!pagesResponse.ok) throw new Error(pagesPayload.error?.message || "Facebook n'a pas retourné les Pages administrées.");
+
+        const page = (pagesPayload.data || []).find((candidate) => candidate.instagram_business_account?.id && candidate.access_token);
+        if (!page) throw new Error("Aucune Page Facebook liée à un compte Instagram professionnel n'a été trouvée.");
+
+        const instagram = page.instagram_business_account;
+        const expiresAt = userToken.expires_in
+            ? new Date(Date.now() + Number(userToken.expires_in) * 1000).toISOString()
             : null;
 
         await supabaseRequest("/rest/v1/instagram_connections?on_conflict=studio_user_id", {
@@ -68,18 +56,18 @@ export default async (request) => {
             headers: { "Content-Type": "application/json", Prefer: "resolution=merge-duplicates" },
             body: JSON.stringify({
                 studio_user_id: oauthState.studio_user_id,
-                instagram_account_id: String(profile.user_id),
-                instagram_username: profile.username || null,
-                facebook_page_id: null,
-                facebook_page_name: null,
-                page_access_token: longLivedToken.access_token,
+                instagram_account_id: String(instagram.id),
+                instagram_username: instagram.username || null,
+                facebook_page_id: String(page.id),
+                facebook_page_name: page.name || null,
+                page_access_token: page.access_token,
                 token_expires_at: expiresAt,
                 updated_at: new Date().toISOString()
             })
         });
         await supabaseRequest(`/rest/v1/instagram_oauth_states?state=eq.${encodeURIComponent(state)}`, { method: "DELETE" });
 
-        return completionPage(true, `Le compte @${profile.username || "Instagram"} est prêt à être synchronisé.`);
+        return completionPage(true, `Le compte @${instagram.username || "Instagram"} est prêt à être synchronisé.`);
     } catch (error) {
         console.error("instagram-callback", error);
         return completionPage(false, error.message || "La connexion Instagram n'a pas abouti.");
