@@ -99,3 +99,16 @@ function startPrintCheckout(artworkId, shippingZone, pickupPoint, container) {
     })
   });
 }
+
+// Les packs numériques sont des commandes distinctes : ils regroupent
+// plusieurs œuvres, mais le fichier HD reste livré manuellement par email.
+function startCollectionDigitalCheckout(collectionId, container, canCheckout) {
+  return startCheckout({
+    container,
+    createEndpoint: "/.netlify/functions/create-collection-order",
+    captureEndpoint: "/.netlify/functions/capture-collection-order",
+    successMessage: "Paiement confirmé. Le pack vous sera envoyé par email.",
+    canCheckout,
+    createRequestBody: () => ({ collectionId, immediateDeliveryConsent: true })
+  });
+}

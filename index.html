@@ -153,6 +153,12 @@
   .card:hover .card-media img {
     transform: scale(1.04);
   }
+  .collection-card { grid-column: span 2; position:relative; }
+  .collection-card .card-media { aspect-ratio:16 / 9; position:relative; }
+  .collection-controls { align-items:center; bottom:14px; display:flex; gap:8px; position:absolute; right:14px; z-index:2; }
+  .collection-controls button { background:rgba(248,247,244,.94); border:0; color:var(--ink); cursor:pointer; font:1.05rem 'Work Sans',sans-serif; height:34px; width:34px; }
+  .collection-counter { background:rgba(28,28,28,.8); color:#fff; font-size:.75rem; padding:8px 10px; }
+  .collection-label { color:#666; font-size:.72rem; font-weight:600; letter-spacing:.13em; margin:20px 0 0; }
   .card h3 {
     margin: 20px 0 0;
     font-family: 'Fraunces', serif;
@@ -212,6 +218,8 @@
   }
   @media (max-width: 520px) {
     .grid { grid-template-columns: 1fr; }
+    .collection-card { grid-column:span 1; }
+    .collection-card .card-media { aspect-ratio:4 / 5; }
   }
 </style>
 </head>
@@ -258,22 +266,33 @@
 
   const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
 
+  function createCollectionCard(collection) {
+    const items = (collection.collection_items || []).sort((a,b) => a.position - b.position).map(item => item.Artworks).filter(Boolean);
+    if (items.length < 2) return null;
+    const card = document.createElement('article'), media = document.createElement('div'), image = document.createElement('img'), label = document.createElement('p'), title = document.createElement('h3'), description = document.createElement('p'), link = document.createElement('a'), controls = document.createElement('div'), previous = document.createElement('button'), next = document.createElement('button'), counter = document.createElement('span');
+    let index = 0;
+    const renderSlide = () => { image.src = items[index].image_url; image.alt = items[index].title || collection.title; counter.textContent = `${index + 1} / ${items.length}`; };
+    card.className = 'card collection-card'; card.onclick = () => window.location.href = `pages/collection.html?id=${encodeURIComponent(collection.id)}`;
+    media.className = 'card-media'; image.loading = 'lazy'; image.decoding = 'async'; label.className = 'collection-label'; label.textContent = 'COLLECTION'; title.textContent = collection.title; description.className = 'loc'; description.textContent = `${items.length} photographies`; link.className = 'button'; link.href = `pages/collection.html?id=${encodeURIComponent(collection.id)}`; link.textContent = 'DÉCOUVRIR LA COLLECTION';
+    controls.className = 'collection-controls'; counter.className = 'collection-counter'; previous.type = next.type = 'button'; previous.textContent = '←'; next.textContent = '→'; previous.setAttribute('aria-label','Photo précédente'); next.setAttribute('aria-label','Photo suivante');
+    [previous,next].forEach(button => button.addEventListener('click', event => event.stopPropagation())); previous.onclick = () => { index = (index - 1 + items.length) % items.length; renderSlide(); }; next.onclick = () => { index = (index + 1) % items.length; renderSlide(); };
+    controls.append(previous,counter,next); media.append(image,controls); card.append(media,label,title,description,link); renderSlide(); return card;
+  }
+
   async function loadPhotos() {
-    const { data, error } = await supabaseClient
-      .from('Artworks')
-      .select('*')
-      .eq('is_published', true)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Erreur Supabase:', error);
-      return;
-    }
-
-    const grid = document.getElementById('photo-grid');
-    grid.innerHTML = '';
-
-    data.forEach(photo => {
+    const [artworksResult, collectionsResult] = await Promise.all([
+      supabaseClient.from('Artworks').select('*').eq('is_published', true).order('created_at', { ascending: false }),
+      supabaseClient.from('collections').select('id,title,created_at,show_items_on_home,collection_items(artwork_id,position,Artworks(id,title,image_url,is_published))').eq('is_published',true).order('created_at',{ascending:false})
+    ]);
+    const { data, error } = artworksResult;
+    if (error) { console.error('Erreur Supabase:', error); return; }
+    const grid = document.getElementById('photo-grid'); grid.innerHTML = '';
+    const collections = (collectionsResult.data || []).filter(collection => (collection.collection_items || []).filter(item => item.Artworks?.is_published !== false).length >= 2);
+    const hiddenArtworkIds = new Set(collections.filter(collection => !collection.show_items_on_home).flatMap(collection => collection.collection_items.map(item => item.artwork_id)));
+    const entries = [...(data || []).filter(photo => !hiddenArtworkIds.has(photo.id)).map(photo => ({type:'artwork',date:photo.created_at,item:photo})),...collections.map(collection => ({type:'collection',date:collection.created_at,item:collection}))].sort((a,b) => new Date(b.date) - new Date(a.date));
+    entries.forEach(entry => {
+      if (entry.type === 'collection') { const collectionCard = createCollectionCard(entry.item); if (collectionCard) grid.appendChild(collectionCard); return; }
+      const photo = entry.item;
       const card = document.createElement('div');
       card.className = 'card';
       card.onclick = () => window.location.href = `pages/oeuvre.html?id=${photo.id}`;

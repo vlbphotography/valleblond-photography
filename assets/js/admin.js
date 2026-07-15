@@ -91,7 +91,7 @@ function renderStudioShell(user, activeView, content) {
                     <button class="${activeView === "uploads" ? "is-active" : ""}" data-view="uploads" type="button" ${activeView === "uploads" ? 'aria-current="page"' : ""}>Ajouter une preview</button>
                     <button class="${activeView === "orders" ? "is-active" : ""}" data-view="orders" type="button" ${activeView === "orders" ? 'aria-current="page"' : ""}>Commandes</button>
                     <button class="${activeView === "accounting" ? "is-active" : ""}" data-view="accounting" type="button" ${activeView === "accounting" ? 'aria-current="page"' : ""}>Comptabilité</button>
-                    <button type="button" disabled title="Disponible au sprint Collections">Collections</button>
+                    <button class="${activeView === "collections" ? "is-active" : ""}" data-view="collections" type="button" ${activeView === "collections" ? 'aria-current="page"' : ""}>Collections</button>
                 </nav>
                 <button class="logout-button" id="logout-button" type="button">Se déconnecter</button>
             </aside>
@@ -128,6 +128,11 @@ function renderStudioShell(user, activeView, content) {
 
             if (button.dataset.view === "accounting") {
                 renderAccounting(user);
+                return;
+            }
+
+            if (button.dataset.view === "collections") {
+                renderCollectionList(user);
                 return;
             }
 
@@ -682,10 +687,11 @@ async function renderOrders(user) {
     list.textContent = "Chargement des commandes…";
     localList.textContent = "Chargement des demandes…";
 
-    const [digitalResult, printResult, localResult] = await Promise.all([
+    const [digitalResult, printResult, localResult, collectionResult] = await Promise.all([
         supabaseClient.from("digital_orders").select("buyer_email, amount, currency, status, paypal_environment, created_at, Artworks(title)").order("created_at", { ascending: false }),
         supabaseClient.from("print_orders").select("buyer_email, amount, currency, status, paypal_environment, created_at, shipping_address, shipping_zone, shipping_amount, Artworks(title)").order("created_at", { ascending: false }),
-        supabaseClient.from("local_delivery_requests").select("id, buyer_name, buyer_email, buyer_phone, address_line, postal_code, city, payment_preference, payment_method, status, created_at, Artworks(title)").order("created_at", { ascending: false })
+        supabaseClient.from("local_delivery_requests").select("id, buyer_name, buyer_email, buyer_phone, address_line, postal_code, city, payment_preference, payment_method, status, created_at, Artworks(title)").order("created_at", { ascending: false }),
+        supabaseClient.from("collection_orders").select("buyer_email, amount, currency, status, paypal_environment, created_at, Collections(title)").order("created_at", { ascending: false })
     ]);
 
     renderLocalDeliveryRequests(user, localResult.data || [], localResult.error);
@@ -697,7 +703,8 @@ async function renderOrders(user) {
 
     const orders = [
         ...(digitalResult.data || []).map((order) => ({ ...order, type: "numérique" })),
-        ...(printResult.data || []).map((order) => ({ ...order, type: "tirage" }))
+        ...(printResult.data || []).map((order) => ({ ...order, type: "tirage" })),
+        ...(collectionResult.data || []).map((order) => ({ ...order, type: "pack" }))
     ].sort((first, second) => new Date(second.created_at) - new Date(first.created_at));
 
     if (!orders.length) {
@@ -712,7 +719,8 @@ async function renderOrders(user) {
 
         const details = document.createElement("p");
         details.className = "studio-order-summary";
-        details.textContent = `${order.type === "tirage" ? "Tirage physique" : "Fichier numérique"} · ${order.Artworks?.title || "Œuvre"} · ${order.amount} ${order.currency} · ${order.buyer_email || "Email indisponible"} · ${formatArtworkDate(order.created_at)}`;
+        const orderLabel = order.type === "tirage" ? "Tirage physique" : order.type === "pack" ? "Pack numérique" : "Fichier numérique";
+        details.textContent = `${orderLabel} · ${order.Artworks?.title || order.Collections?.title || "Œuvre"} · ${order.amount} ${order.currency} · ${order.buyer_email || "Email indisponible"} · ${formatArtworkDate(order.created_at)}`;
         row.append(details);
 
         if (order.paypal_environment === "sandbox") {
@@ -755,6 +763,153 @@ async function renderOrders(user) {
 
         list.append(row);
     });
+}
+
+function createCollectionArtworkChoice(artwork, selectedIds) {
+    const label = document.createElement("label");
+    const input = document.createElement("input");
+    const image = document.createElement("img");
+    const details = document.createElement("span");
+    const title = document.createElement("strong");
+
+    label.className = "preview-choice";
+    input.type = "checkbox";
+    input.name = "collection-artwork-id";
+    input.value = artwork.id;
+    input.checked = selectedIds.includes(artwork.id);
+    image.src = artwork.image_url || "";
+    image.alt = artwork.title || "Œuvre sans titre";
+    image.loading = "lazy";
+    title.textContent = artwork.title || "Sans titre";
+    details.append(title);
+    label.append(input, image, details);
+    label.classList.toggle("is-selected", input.checked);
+    input.addEventListener("change", () => label.classList.toggle("is-selected", input.checked));
+    return label;
+}
+
+async function loadCollectionArtworkChoices(selectedIds = []) {
+    const container = document.getElementById("collection-artwork-choices");
+    const { data, error } = await supabaseClient
+        .from(CONFIG.ARTWORKS_TABLE)
+        .select("id, title, image_url")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        container.textContent = "Les œuvres sont indisponibles.";
+        return;
+    }
+
+    // Les images déjà sélectionnées restent en tête, dans l’ordre du
+    // carrousel. Les nouvelles sélections se placent ensuite à la fin.
+    const orderedArtworks = [...(data || [])].sort((first, second) => {
+        const firstIndex = selectedIds.indexOf(first.id);
+        const secondIndex = selectedIds.indexOf(second.id);
+        if (firstIndex === -1 && secondIndex === -1) return 0;
+        if (firstIndex === -1) return 1;
+        if (secondIndex === -1) return -1;
+        return firstIndex - secondIndex;
+    });
+
+    container.replaceChildren();
+    orderedArtworks.forEach((artwork) => container.append(createCollectionArtworkChoice(artwork, selectedIds)));
+}
+
+function renderCollectionEditor(user, collection = null) {
+    const selectedIds = (collection?.collection_items || []).sort((a, b) => a.position - b.position).map((item) => item.artwork_id);
+    const isEditing = Boolean(collection);
+
+    renderStudioShell(user, "collections", `
+        <p class="eyebrow">${isEditing ? "MODIFIER LA COLLECTION" : "NOUVELLE COLLECTION"}</p>
+        <h1 class="display">${isEditing ? "Collection" : "Créer une collection"}</h1>
+        <p class="dashboard-intro">Une collection présente une série comme un carrousel et peut proposer un pack numérique. Les œuvres restent achetables individuellement.</p>
+        <form class="artwork-form" id="collection-form" novalidate>
+            <fieldset class="form-section"><legend class="display">1. Présentation</legend><div class="form-grid">
+                <label class="form-field form-field-wide">Titre<input name="title" maxlength="140" required value="${collection?.title || ""}"></label>
+                <label class="form-field form-field-wide">Description<input name="description" maxlength="1200" value="${collection?.description || ""}"></label>
+                <label class="form-field">Prix du pack numérique (€)<input name="pack-price" type="number" min="0" step="0.01" inputmode="decimal" value="${collection?.price_digital_pack ?? ""}" placeholder="Ex. 60"></label>
+            </div></fieldset>
+            <fieldset class="form-section"><legend class="display">2. Images du carrousel</legend><p class="dashboard-intro">Sélectionnez au moins deux œuvres. Leur ordre suit l’ordre d’affichage ci-dessous ; pour une importation Instagram, il sera conservé automatiquement.</p><div class="preview-choices" id="collection-artwork-choices"></div></fieldset>
+            <label class="publish-toggle"><input name="published" type="checkbox" ${collection?.is_published ? "checked" : ""}><span>Publier la collection</span></label>
+            <label class="publish-toggle"><input name="show-items" type="checkbox" ${collection?.show_items_on_home ? "checked" : ""}><span>Afficher aussi ses œuvres séparément sur l’accueil</span></label>
+            <p class="form-message" id="collection-message" aria-live="polite"></p>
+            <div class="editor-actions"><button class="btn" id="collection-cancel" type="button">Annuler</button><button class="btn btn-primary" id="collection-save" type="submit">${isEditing ? "Enregistrer" : "Créer la collection"}</button></div>
+        </form>
+    `);
+
+    loadCollectionArtworkChoices(selectedIds);
+    document.getElementById("collection-cancel").addEventListener("click", () => renderCollectionList(user));
+    document.getElementById("collection-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const message = document.getElementById("collection-message");
+        const button = document.getElementById("collection-save");
+        const artworkIds = Array.from(form.querySelectorAll('input[name="collection-artwork-id"]:checked')).map((input) => input.value);
+        if (artworkIds.length < 2) { message.textContent = "Choisissez au moins deux œuvres pour former le carrousel."; return; }
+        button.disabled = true;
+        button.textContent = "Enregistrement…";
+        const { error } = await supabaseClient.rpc("save_collection", {
+            p_collection_id: collection?.id || null,
+            p_title: form.title.value.trim(),
+            p_slug: createSlug(form.title.value),
+            p_description: form.description.value.trim(),
+            p_price_digital_pack: form["pack-price"].value ? Number(form["pack-price"].value) : null,
+            p_is_published: form.published.checked,
+            p_show_items_on_home: form["show-items"].checked,
+            p_artwork_ids: artworkIds
+        });
+        if (error) { console.error("Impossible d’enregistrer la collection :", error); message.textContent = "La collection n’a pas pu être enregistrée."; button.disabled = false; button.textContent = isEditing ? "Enregistrer" : "Créer la collection"; return; }
+        renderCollectionList(user, isEditing ? "La collection a été mise à jour." : "La collection a été créée.");
+    });
+}
+
+function createCollectionListItem(collection, user) {
+    const article = document.createElement("article");
+    const details = document.createElement("div");
+    const title = document.createElement("h3");
+    const metadata = document.createElement("p");
+    const status = document.createElement("span");
+    const actions = document.createElement("div");
+    const edit = document.createElement("button");
+    const remove = document.createElement("button");
+
+    article.className = "studio-order-item";
+    title.className = "display";
+    title.textContent = collection.title;
+    metadata.className = "studio-order-delivery";
+    metadata.textContent = `${collection.collection_items?.length || 0} œuvres · ${collection.price_digital_pack ? `pack numérique ${formatAccountingAmount(collection.price_digital_pack)}` : "pas de pack numérique"}`;
+    status.className = collection.is_published ? "artwork-status is-published" : "artwork-status";
+    status.textContent = collection.is_published ? "Publiée" : "Brouillon";
+    edit.className = "btn artwork-edit-button";
+    edit.textContent = "Modifier";
+    edit.type = "button";
+    edit.addEventListener("click", () => renderCollectionEditor(user, collection));
+    remove.className = "btn artwork-delete-button";
+    remove.textContent = "Supprimer";
+    remove.type = "button";
+    remove.addEventListener("click", async () => {
+        if (!window.confirm(`Supprimer la collection « ${collection.title} » ? Les œuvres seront conservées.`)) return;
+        const { error } = await supabaseClient.rpc("delete_collection", { p_collection_id: collection.id });
+        if (error) { alert("La collection n’a pas pu être supprimée."); return; }
+        renderCollectionList(user, "La collection a été supprimée. Les œuvres sont conservées.");
+    });
+    details.append(title, metadata, status);
+    actions.className = "artwork-item-actions";
+    actions.append(edit, remove);
+    article.append(details, actions);
+    return article;
+}
+
+async function renderCollectionList(user, successMessage = "") {
+    renderStudioShell(user, "collections", '<p class="eyebrow">SÉRIES</p><h1 class="display">Collections</h1><p class="dashboard-intro">Créez des carrousels éditoriaux visibles sur l’accueil. Chaque œuvre reste indépendante ; le pack numérique est optionnel.</p><div class="editor-actions"><button class="btn btn-primary" id="new-collection" type="button">Créer une collection</button></div><p class="form-message" id="collection-list-message" aria-live="polite"></p><section class="studio-artwork-list" id="collection-list"></section>');
+    document.getElementById("new-collection").addEventListener("click", () => renderCollectionEditor(user));
+    const message = document.getElementById("collection-list-message");
+    if (successMessage) { message.classList.add("is-success"); message.textContent = successMessage; }
+    const list = document.getElementById("collection-list");
+    const { data, error } = await supabaseClient.from("collections").select("id, title, description, price_digital_pack, is_published, show_items_on_home, collection_items(artwork_id, position)").order("created_at", { ascending: false });
+    if (error) { list.textContent = "Les collections seront disponibles après l’activation de la fonctionnalité."; return; }
+    if (!data?.length) { list.innerHTML = '<p class="empty-state">Aucune collection pour le moment.</p>'; return; }
+    data.forEach((collection) => list.append(createCollectionListItem(collection, user)));
 }
 
 function formatAccountingAmount(amount, currency = "EUR") {
@@ -882,7 +1037,7 @@ function exportAccountingCsv(entries, monthValue) {
 
 async function loadAccounting(monthValue) {
     const status = document.getElementById("accounting-status");
-    const [digitalResult, printResult, localResult] = await Promise.all([
+    const [digitalResult, printResult, localResult, collectionResult] = await Promise.all([
         supabaseClient
             .from("digital_orders")
             .select("id, paypal_capture_id, buyer_email, amount, currency, completed_at, Artworks(title)")
@@ -899,14 +1054,21 @@ async function loadAccounting(monthValue) {
             .from("local_delivery_requests")
             .select("id, buyer_email, artwork_title, amount, currency, paid_at, status, Artworks(title)")
             .in("status", ["paid_in_person", "delivered"])
-            .order("paid_at", { ascending: false })
+            .order("paid_at", { ascending: false }),
+        supabaseClient
+            .from("collection_orders")
+            .select("id, paypal_capture_id, buyer_email, amount, currency, completed_at, Collections(title)")
+            .eq("status", "completed")
+            .eq("paypal_environment", "live")
+            .order("completed_at", { ascending: false })
     ]);
 
-    if (digitalResult.error || printResult.error || localResult.error) {
+    if (digitalResult.error || printResult.error || localResult.error || collectionResult.error) {
         console.error("Impossible de charger le registre comptable :", {
             digital: digitalResult.error,
             print: printResult.error,
-            local: localResult.error
+            local: localResult.error,
+            collection: collectionResult.error
         });
         status.textContent = "Le registre est indisponible. Vérifiez que supabase/setup-accounting.sql a bien été exécuté.";
         return;
@@ -942,6 +1104,16 @@ async function loadAccounting(monthValue) {
             amount: order.amount,
             currency: order.currency || "EUR",
             paymentMethod: "Paiement en main propre"
+        })),
+        ...(collectionResult.data || []).map((order) => ({
+            date: order.completed_at,
+            reference: order.paypal_capture_id || order.id,
+            type: "Pack numérique",
+            artworkTitle: order.Collections?.title || "Collection",
+            buyerEmail: order.buyer_email,
+            amount: order.amount,
+            currency: order.currency,
+            paymentMethod: "PayPal"
         }))
     ].filter((entry) => entry.date).sort((first, second) => new Date(second.date) - new Date(first.date));
 
