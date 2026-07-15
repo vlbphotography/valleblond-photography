@@ -460,6 +460,31 @@
     margin-top: var(--space-lg);
 }
 
+.catalogue-section {
+    margin-top: var(--space-xl);
+}
+
+.catalogue-section-heading {
+    align-items: baseline;
+    display: flex;
+    gap: var(--space-sm);
+    justify-content: space-between;
+}
+
+.catalogue-section-heading h2 {
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+}
+
+.catalogue-section-heading p {
+    color: var(--text-light);
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+.catalogue-section .studio-artwork-list {
+    margin-top: var(--space-sm);
+}
+
 .studio-artwork-item {
     align-items: center;
     border-bottom: 1px solid var(--border);

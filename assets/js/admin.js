@@ -815,7 +815,10 @@ function createArtworkListItem(artwork, user) {
 }
 
 async function loadArtworkList(user) {
-    const container = document.getElementById("studio-artwork-list");
+    const publishedContainer = document.getElementById("published-artwork-list");
+    const draftContainer = document.getElementById("draft-artwork-list");
+    const publishedCount = document.getElementById("published-artwork-count");
+    const draftCount = document.getElementById("draft-artwork-count");
     const status = document.getElementById("artwork-list-status");
     const cleanedPreviews = await retryOrphanedPreviewCleanup();
     const { data, error } = await supabaseClient
@@ -823,7 +826,8 @@ async function loadArtworkList(user) {
         .select("id, title, location, year, image_url, is_published, created_at")
         .order("created_at", { ascending: false });
 
-    container.replaceChildren();
+    publishedContainer.replaceChildren();
+    draftContainer.replaceChildren();
 
     if (error) {
         console.error("Impossible de charger les œuvres :", error);
@@ -832,7 +836,10 @@ async function loadArtworkList(user) {
     }
 
     if (!data.length) {
-        container.innerHTML = '<p class="empty-state">Aucune œuvre n’a encore été créée.</p>';
+        publishedCount.textContent = "0 œuvre";
+        draftCount.textContent = "0 brouillon";
+        publishedContainer.innerHTML = '<p class="empty-state">Aucune œuvre publiée pour le moment.</p>';
+        draftContainer.innerHTML = '<p class="empty-state">Aucun brouillon pour le moment.</p>';
         return;
     }
 
@@ -841,7 +848,23 @@ async function loadArtworkList(user) {
         status.textContent = "Une preview résiduelle a été nettoyée automatiquement.";
     }
 
-    data.forEach((artwork) => container.append(createArtworkListItem(artwork, user)));
+    const publishedArtworks = data.filter((artwork) => artwork.is_published);
+    const draftArtworks = data.filter((artwork) => !artwork.is_published);
+
+    publishedCount.textContent = `${publishedArtworks.length} œuvre${publishedArtworks.length > 1 ? "s" : ""}`;
+    draftCount.textContent = `${draftArtworks.length} brouillon${draftArtworks.length > 1 ? "s" : ""}`;
+
+    if (publishedArtworks.length) {
+        publishedArtworks.forEach((artwork) => publishedContainer.append(createArtworkListItem(artwork, user)));
+    } else {
+        publishedContainer.innerHTML = '<p class="empty-state">Aucune œuvre publiée pour le moment.</p>';
+    }
+
+    if (draftArtworks.length) {
+        draftArtworks.forEach((artwork) => draftContainer.append(createArtworkListItem(artwork, user)));
+    } else {
+        draftContainer.innerHTML = '<p class="empty-state">Aucun brouillon pour le moment.</p>';
+    }
 }
 
 async function retryOrphanedPreviewCleanup() {
@@ -885,7 +908,20 @@ function renderArtworkList(user, successMessage = "") {
         <h1 class="display">Œuvres</h1>
         <p class="dashboard-intro">Modifiez les informations, les prix, le statut de publication ou l’image de chaque œuvre.</p>
         <p class="form-message" id="artwork-list-status" aria-live="polite"></p>
-        <section class="studio-artwork-list" id="studio-artwork-list" aria-label="Liste des œuvres"></section>
+        <section class="catalogue-section" aria-labelledby="published-artworks-heading">
+            <div class="catalogue-section-heading">
+                <h2 class="display" id="published-artworks-heading">Publiées</h2>
+                <p id="published-artwork-count">Chargement…</p>
+            </div>
+            <div class="studio-artwork-list" id="published-artwork-list" aria-label="Œuvres publiées"></div>
+        </section>
+        <section class="catalogue-section" aria-labelledby="draft-artworks-heading">
+            <div class="catalogue-section-heading">
+                <h2 class="display" id="draft-artworks-heading">Brouillons</h2>
+                <p id="draft-artwork-count">Chargement…</p>
+            </div>
+            <div class="studio-artwork-list" id="draft-artwork-list" aria-label="Œuvres en brouillon"></div>
+        </section>
     `);
 
     if (successMessage) {
