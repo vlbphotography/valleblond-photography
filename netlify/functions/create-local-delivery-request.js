@@ -71,7 +71,7 @@ export default async (request) => {
         apikey: serviceKey,
         Authorization: `Bearer ${serviceKey}`,
         "Content-Type": "application/json",
-        Prefer: "return=minimal"
+        Prefer: "return=representation"
       },
       body: JSON.stringify({
         artwork_id: artworkId,
@@ -90,8 +90,11 @@ export default async (request) => {
       })
     });
 
-    if (!insertResponse.ok) {
-      console.error("create-local-delivery-request", await insertResponse.text());
+    const createdRequest = await insertResponse.json().catch(() => []);
+    const requestId = createdRequest?.[0]?.id;
+
+    if (!insertResponse.ok || !requestId) {
+      console.error("create-local-delivery-request", createdRequest);
       return errorResponse("Votre demande n’a pas pu être enregistrée. Réessayez dans quelques instants.", 500);
     }
 
@@ -102,7 +105,14 @@ export default async (request) => {
       `Email : ${buyerEmail}`,
       `Ville : ${postalCode} ${city}`,
       "→ À valider dans le Studio : https://vlbphotography.netlify.app/pages/admin/"
-    ].join("\n"));
+    ].join("\n"), {
+      replyMarkup: {
+        inline_keyboard: [[
+          { text: "✅ Valider la zone", callback_data: `local:${requestId}:approve` },
+          { text: "❌ Refuser", callback_data: `local:${requestId}:reject` }
+        ]]
+      }
+    });
 
     return Response.json({ success: true });
   } catch (error) {
