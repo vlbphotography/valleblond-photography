@@ -7,6 +7,11 @@
 
 const supabaseUrl = () => process.env.SUPABASE_URL;
 const serviceKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Cette clé est déjà présente dans le JavaScript public du site. Elle ne donne
+// accès qu'aux données explicitement autorisées par les règles Supabase (RLS).
+// Elle sert ici à vérifier la session réelle de l'administrateur, jamais à
+// importer des données ou à manipuler les jetons Instagram.
+const publishableKey = () => process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_G1P4cf8s5YflPO-NzU3oXA_dH4qx1d_";
 
 export function json(data, status = 200) {
     return Response.json(data, { status });
@@ -58,12 +63,28 @@ export async function requireStudioAdmin(request) {
     if (!token) throw new Error("Session Studio requise.");
 
     const userResponse = await fetch(`${supabaseUrl()}/auth/v1/user`, {
-        headers: { apikey: serviceKey(), Authorization: `Bearer ${token}` }
+        headers: { apikey: publishableKey(), Authorization: `Bearer ${token}` }
     });
     const user = await userResponse.json().catch(() => null);
     if (!userResponse.ok || !user?.id) throw new Error("Session Studio expirée.");
 
-    const administrators = await supabaseRequest(`/rest/v1/studio_admins?user_id=eq.${encodeURIComponent(user.id)}&select=user_id`);
+    // La règle RLS de studio_admins autorise chaque administrateur à consulter
+    // sa propre ligne. Utiliser sa session évite de dépendre des privilèges SQL
+    // de la clé serveur pour cette simple vérification d'accès.
+    const administratorResponse = await fetch(
+        `${supabaseUrl()}/rest/v1/studio_admins?user_id=eq.${encodeURIComponent(user.id)}&select=user_id`,
+        {
+            headers: {
+                apikey: publishableKey(),
+                Authorization: `Bearer ${token}`
+            }
+        }
+    );
+    const administrators = await administratorResponse.json().catch(() => null);
+    if (!administratorResponse.ok) {
+        const message = administrators?.message || administrators?.msg || administratorResponse.status;
+        throw new Error(`Supabase : ${message}`);
+    }
     if (!administrators?.length) throw new Error("Accès Studio refusé.");
 
     return user;
