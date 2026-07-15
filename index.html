@@ -269,7 +269,11 @@
 <script>
   // La clé publique est centralisée dans config.js : si Supabase la renouvelle,
   // la galerie et le Studio restent synchronisés sans clé ancienne cachée ici.
-  const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_PUBLISHABLE_KEY);
+  const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_PUBLISHABLE_KEY, {
+    // La galerie doit toujours rester une visite publique : elle ne réutilise
+    // jamais la session d'administration éventuellement ouverte dans Studio.
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+  });
 
   function createCollectionCard(collection) {
     const { t, localized } = window.ValleblondI18n;
