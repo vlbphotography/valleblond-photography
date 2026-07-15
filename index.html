@@ -345,7 +345,13 @@
     lastScroll = currentScroll;
   });
 
-  window.onload = loadPhotos;
+  // La galerie ne dépend pas du chargement complet des polices ou services
+  // externes : elle démarre dès que le document est prêt.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadPhotos, { once: true });
+  } else {
+    loadPhotos();
+  }
 </script>
 
 </body>

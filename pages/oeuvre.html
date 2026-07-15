@@ -259,7 +259,13 @@
     document.getElementById('content-main').style.display = 'grid';
   }
 
-  window.onload = loadOeuvre;
+  // Une fiche œuvre ne doit pas attendre le chargement complet des ressources
+  // externes pour récupérer ses informations depuis Supabase.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadOeuvre, { once: true });
+  } else {
+    loadOeuvre();
+  }
 </script>
 <script src="../assets/js/paypal.js"></script>
 
