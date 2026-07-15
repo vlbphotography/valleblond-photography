@@ -1808,6 +1808,12 @@ async function renderArtworkEditor(user, artworkId, successMessage = "") {
             </fieldset>
             <fieldset class="form-section">
                 <legend class="display">Remplacer la preview</legend>
+                <p class="dashboard-intro">Choisissez directement un nouveau fichier ou une preview déjà envoyée. Le remplacement sera effectué uniquement à l’enregistrement.</p>
+                <label class="replacement-upload-control" for="replacement-preview-file">
+                    <span class="btn">Choisir une autre image</span>
+                    <span id="replacement-preview-file-name">JPEG, PNG ou WebP · 15 Mo maximum</span>
+                    <input id="replacement-preview-file" type="file" accept="image/jpeg,image/png,image/webp">
+                </label>
                 <label class="keep-current-preview is-selected">
                     <input name="replacement-upload-id" type="radio" value="" checked>
                     <span>Conserver l’image actuelle</span>
@@ -1841,6 +1847,42 @@ async function renderArtworkEditor(user, artworkId, successMessage = "") {
 
     loadReplacementPreviews();
 
+    const replacementFileInput = document.getElementById("replacement-preview-file");
+    const replacementFileName = document.getElementById("replacement-preview-file-name");
+    let directReplacementFile = null;
+
+    replacementFileInput.addEventListener("change", () => {
+        const file = replacementFileInput.files[0];
+        const message = document.getElementById("edit-artwork-message");
+
+        directReplacementFile = null;
+        message.classList.remove("is-success");
+        message.textContent = "";
+
+        if (!file) {
+            replacementFileName.textContent = "JPEG, PNG ou WebP · 15 Mo maximum";
+            return;
+        }
+
+        if (!CONFIG.PREVIEW_ALLOWED_TYPES.includes(file.type)) {
+            replacementFileName.textContent = "JPEG, PNG ou WebP · 15 Mo maximum";
+            message.textContent = "Choisissez une image JPEG, PNG ou WebP.";
+            replacementFileInput.value = "";
+            return;
+        }
+
+        if (file.size > CONFIG.PREVIEW_MAX_FILE_SIZE) {
+            replacementFileName.textContent = "JPEG, PNG ou WebP · 15 Mo maximum";
+            message.textContent = "La preview dépasse la limite de 15 Mo. Exportez une version plus légère.";
+            replacementFileInput.value = "";
+            return;
+        }
+
+        directReplacementFile = file;
+        replacementFileName.textContent = `${file.name} · ${formatFileSize(file.size)} · sera utilisée à l’enregistrement`;
+        document.querySelectorAll(".preview-choice").forEach((choice) => choice.classList.remove("is-selected"));
+    });
+
     document.querySelector(".keep-current-preview input").addEventListener("change", () => {
         document.querySelectorAll(".preview-choice").forEach((choice) => choice.classList.remove("is-selected"));
     });
@@ -1868,6 +1910,21 @@ async function renderArtworkEditor(user, artworkId, successMessage = "") {
         message.classList.remove("is-success");
         message.textContent = "";
 
+        let replacementUploadId = replacement?.value || null;
+
+        if (directReplacementFile) {
+            try {
+                message.textContent = "Envoi de la nouvelle preview…";
+                replacementUploadId = await uploadPublicationPreview(directReplacementFile, user);
+            } catch (uploadError) {
+                console.error("Impossible d’envoyer la nouvelle preview :", uploadError);
+                button.disabled = false;
+                button.textContent = "Enregistrer les modifications";
+                message.textContent = uploadError.message || "La nouvelle image n’a pas pu être envoyée.";
+                return;
+            }
+        }
+
         const { error: updateError } = await supabaseClient.rpc("update_artwork", {
             p_artwork_id: artwork.id,
             p_title: title,
@@ -1879,7 +1936,7 @@ async function renderArtworkEditor(user, artworkId, successMessage = "") {
             p_price_digital: digitalValue ? Number(digitalValue) : null,
             p_price_physical: physicalValue ? Number(physicalValue) : null,
             p_is_published: document.getElementById("edit-is-published").checked,
-            p_replacement_upload_id: replacement?.value || null
+            p_replacement_upload_id: replacementUploadId
         });
 
         if (updateError) {

@@ -695,6 +695,35 @@
     width: 1rem;
 }
 
+.replacement-upload-control {
+    align-items: center;
+    background: var(--surface);
+    cursor: pointer;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    margin-top: var(--space-md);
+    padding: 1rem;
+}
+
+.replacement-upload-control .btn {
+    margin: 0;
+}
+
+.replacement-upload-control > span:last-of-type {
+    color: var(--text-light);
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+}
+
+.replacement-upload-control input {
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+    position: absolute;
+    width: 1px;
+}
+
 .editor-actions {
     display: flex;
     flex-wrap: wrap;
