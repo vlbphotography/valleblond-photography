@@ -15,6 +15,8 @@ const CONFIG = Object.freeze({
     ARTWORKS_BUCKET: "artworks",
     PREVIEW_MAX_FILE_SIZE: 15 * 1024 * 1024,
     PREVIEW_ALLOWED_TYPES: ["image/jpeg", "image/png", "image/webp"],
-    PAYPAL_CLIENT_ID: "AYA-X0Qm5Roj9vomR4P-P629XYTuoB1tH6OgMh6_WdJxwHR0uqWqhN8gkGOR2HooQSmGitc2bb51kpVi",
-    PAYPAL_ENVIRONMENT: "sandbox"
+    // Identifiant public PayPal de production. Les opérations sensibles
+    // utilisent exclusivement le secret conservé dans Netlify.
+    PAYPAL_CLIENT_ID: "BAA3BPN-EBWUEt1bLtiKnSMoF-4KdMk7mzsu5H_gMEEhWgecT21wInqAYuUuDOsbYNw8Awp4krVSO6iLrg",
+    PAYPAL_ENVIRONMENT: "live"
 });
