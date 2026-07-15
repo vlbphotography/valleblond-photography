@@ -6,6 +6,7 @@ create table if not exists public.digital_orders (
  buyer_email text,
  amount numeric(10,2) not null check (amount >= 0),
  currency text not null default 'EUR',
+ paypal_environment text check (paypal_environment in ('sandbox', 'live')),
  status text not null default 'created' check (status in ('created','completed','failed')),
  download_count integer not null default 0,
  created_at timestamptz not null default now(), completed_at timestamptz

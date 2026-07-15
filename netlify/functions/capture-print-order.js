@@ -1,6 +1,7 @@
 const paypalBaseUrl = process.env.PAYPAL_ENVIRONMENT === "live"
   ? "https://api-m.paypal.com"
   : "https://api-m.sandbox.paypal.com";
+const paypalEnvironment = process.env.PAYPAL_ENVIRONMENT === "live" ? "live" : "sandbox";
 
 const shippingOptions = {
   france: { label: "Colissimo France", amount: 9 },
@@ -97,6 +98,7 @@ export default async (request) => {
         p_shipping_address: { ...(unit.shipping || {}), pickup_point: orderReference?.p || null },
         p_shipping_zone: shipping.label,
         p_shipping_amount: shipping.amount,
+        p_paypal_environment: paypalEnvironment,
         p_completed_at: new Date().toISOString()
       })
     });

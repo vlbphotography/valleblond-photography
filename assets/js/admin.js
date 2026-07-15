@@ -683,8 +683,8 @@ async function renderOrders(user) {
     localList.textContent = "Chargement des demandes…";
 
     const [digitalResult, printResult, localResult] = await Promise.all([
-        supabaseClient.from("digital_orders").select("buyer_email, amount, currency, status, created_at, Artworks(title)").order("created_at", { ascending: false }),
-        supabaseClient.from("print_orders").select("buyer_email, amount, currency, status, created_at, shipping_address, shipping_zone, shipping_amount, Artworks(title)").order("created_at", { ascending: false }),
+        supabaseClient.from("digital_orders").select("buyer_email, amount, currency, status, paypal_environment, created_at, Artworks(title)").order("created_at", { ascending: false }),
+        supabaseClient.from("print_orders").select("buyer_email, amount, currency, status, paypal_environment, created_at, shipping_address, shipping_zone, shipping_amount, Artworks(title)").order("created_at", { ascending: false }),
         supabaseClient.from("local_delivery_requests").select("id, buyer_name, buyer_email, buyer_phone, address_line, postal_code, city, payment_preference, payment_method, status, created_at, Artworks(title)").order("created_at", { ascending: false })
     ]);
 
@@ -714,6 +714,13 @@ async function renderOrders(user) {
         details.className = "studio-order-summary";
         details.textContent = `${order.type === "tirage" ? "Tirage physique" : "Fichier numérique"} · ${order.Artworks?.title || "Œuvre"} · ${order.amount} ${order.currency} · ${order.buyer_email || "Email indisponible"} · ${formatArtworkDate(order.created_at)}`;
         row.append(details);
+
+        if (order.paypal_environment === "sandbox") {
+            const testStatus = document.createElement("p");
+            testStatus.className = "studio-order-delivery";
+            testStatus.textContent = "Test PayPal Sandbox — exclu du registre comptable.";
+            row.append(testStatus);
+        }
 
         if (order.type === "tirage") {
             const address = order.shipping_address?.address;
@@ -880,11 +887,13 @@ async function loadAccounting(monthValue) {
             .from("digital_orders")
             .select("id, paypal_capture_id, buyer_email, amount, currency, completed_at, Artworks(title)")
             .eq("status", "completed")
+            .eq("paypal_environment", "live")
             .order("completed_at", { ascending: false }),
         supabaseClient
             .from("print_orders")
             .select("id, paypal_capture_id, buyer_email, amount, currency, completed_at, Artworks(title)")
             .eq("status", "completed")
+            .eq("paypal_environment", "live")
             .order("completed_at", { ascending: false }),
         supabaseClient
             .from("local_delivery_requests")

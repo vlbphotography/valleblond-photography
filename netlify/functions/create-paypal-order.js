@@ -3,6 +3,7 @@
 const paypalBaseUrl = process.env.PAYPAL_ENVIRONMENT === "live"
   ? "https://api-m.paypal.com"
   : "https://api-m.sandbox.paypal.com";
+const paypalEnvironment = process.env.PAYPAL_ENVIRONMENT === "live" ? "live" : "sandbox";
 
 export default async (request) => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
@@ -34,6 +35,7 @@ export default async (request) => {
       paypal_order_id: order.id,
       amount: Number(artwork[0].price_digital).toFixed(2),
       currency: "EUR",
+      paypal_environment: paypalEnvironment,
       immediate_delivery_consent: true,
       consent_recorded_at: new Date().toISOString()
     })

@@ -1,13 +1,37 @@
--- Ajoute le détail de livraison aux commandes de tirages physiques.
--- À exécuter une fois dans Supabase avant le prochain déploiement.
+-- ============================================================
+-- Valleblond Photography — Isolation PayPal Sandbox / Live
+--
+-- À exécuter une seule fois dans Supabase > SQL Editor, AVANT
+-- le déploiement qui active ce fichier.
+--
+-- Le registre comptable ne retient que les transactions PayPal Live.
+-- Les commandes antérieures sans environnement restent volontairement
+-- exclues, sauf les anciens tests Sandbox identifiés ci-dessous.
+-- ============================================================
+
+alter table public.digital_orders
+  add column if not exists paypal_environment text
+  check (paypal_environment in ('sandbox', 'live'));
 
 alter table public.print_orders
-  add column if not exists shipping_zone text,
-  add column if not exists shipping_amount numeric(10,2) not null default 0,
-  add column if not exists paypal_environment text check (paypal_environment in ('sandbox', 'live'));
+  add column if not exists paypal_environment text
+  check (paypal_environment in ('sandbox', 'live'));
 
--- La fonction est séparée de l'ancienne afin de ne pas perturber les commandes
--- déjà enregistrées ou le cache de Supabase.
+-- Les comptes acheteurs Sandbox PayPal utilisent ce format. Ces lignes sont
+-- des tests et ne doivent jamais être comptabilisées comme des recettes.
+update public.digital_orders
+set paypal_environment = 'sandbox'
+where paypal_environment is null
+  and buyer_email ~* '^sb-.*@personal[.]example[.]com$';
+
+update public.print_orders
+set paypal_environment = 'sandbox'
+where paypal_environment is null
+  and buyer_email ~* '^sb-.*@personal[.]example[.]com$';
+
+-- La fonction enregistre maintenant l’environnement de paiement avec chaque
+-- tirage. Elle est séparée de l’ancienne signature pour éviter toute ambiguïté
+-- dans le cache de Supabase.
 create or replace function public.record_print_order_with_shipping(
   p_artwork_id uuid,
   p_paypal_order_id text,

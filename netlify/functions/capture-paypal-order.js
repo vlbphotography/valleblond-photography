@@ -3,6 +3,7 @@
 const paypalBaseUrl = process.env.PAYPAL_ENVIRONMENT === "live"
   ? "https://api-m.paypal.com"
   : "https://api-m.sandbox.paypal.com";
+const paypalEnvironment = process.env.PAYPAL_ENVIRONMENT === "live" ? "live" : "sandbox";
 
 export default async (request) => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
@@ -26,6 +27,7 @@ export default async (request) => {
       buyer_email: order.payer?.email_address,
       amount: capture.amount.value,
       currency: capture.amount.currency_code,
+      paypal_environment: paypalEnvironment,
       status: "completed",
       completed_at: new Date().toISOString()
     })
