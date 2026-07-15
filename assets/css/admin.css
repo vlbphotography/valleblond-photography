@@ -490,6 +490,83 @@
     overflow-wrap: anywhere;
 }
 
+.accounting-toolbar {
+    align-items: end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-top: var(--space-lg);
+}
+
+.accounting-toolbar .form-field {
+    min-width: 12rem;
+}
+
+.accounting-toolbar .btn {
+    margin: 0;
+}
+
+.accounting-summary {
+    display: grid;
+    gap: var(--space-sm);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: var(--space-lg);
+}
+
+.accounting-card {
+    background: var(--surface);
+    min-height: 8.5rem;
+    padding: 1.5rem;
+}
+
+.accounting-card p {
+    color: var(--text-light);
+    font-size: 0.8rem;
+}
+
+.accounting-card strong {
+    display: block;
+    font-family: "Fraunces", serif;
+    font-size: clamp(1.75rem, 4vw, 2.75rem);
+    font-weight: 400;
+    line-height: 1;
+    margin-top: 1rem;
+}
+
+.accounting-list {
+    border-top: 1px solid var(--border);
+    margin-top: var(--space-lg);
+}
+
+.accounting-entry {
+    align-items: start;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    gap: 0.75rem 1.5rem;
+    grid-template-columns: minmax(7rem, 0.55fr) minmax(0, 1.8fr) minmax(7rem, 0.8fr);
+    padding: 1.25rem 0;
+}
+
+.accounting-entry p,
+.accounting-entry time {
+    color: var(--text-light);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.accounting-entry strong {
+    display: block;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.accounting-amount {
+    color: var(--text) !important;
+    font-size: 1rem !important;
+    font-weight: 600;
+    text-align: right;
+}
+
 .studio-artwork-item > img {
     aspect-ratio: 1;
     background: #e8e6df;
@@ -657,6 +734,18 @@
 
     .dashboard-grid {
         grid-template-columns: 1fr;
+    }
+
+    .accounting-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .accounting-entry {
+        grid-template-columns: 1fr;
+    }
+
+    .accounting-amount {
+        text-align: left;
     }
 
     .section-heading {

@@ -48,13 +48,20 @@ export default async (request) => {
 
     const serviceKey = getServiceRoleKey();
     const artworkResponse = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/Artworks?id=eq.${encodeURIComponent(artworkId)}&is_published=eq.true&price_physical=not.is.null&select=id`,
+      `${process.env.SUPABASE_URL}/rest/v1/Artworks?id=eq.${encodeURIComponent(artworkId)}&is_published=eq.true&price_physical=not.is.null&select=id,title,price_physical`,
       { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
     );
     const artworks = await artworkResponse.json();
 
     if (!artworkResponse.ok || !artworks?.length) {
       return errorResponse("Cette œuvre n’est pas disponible en tirage.", 404);
+    }
+
+    const artwork = artworks[0];
+    const amount = Number(artwork.price_physical);
+
+    if (!Number.isFinite(amount) || amount < 0) {
+      return errorResponse("Le prix de cette œuvre est invalide.", 422);
     }
 
     const insertResponse = await fetch(`${process.env.SUPABASE_URL}/rest/v1/local_delivery_requests`, {
@@ -73,7 +80,12 @@ export default async (request) => {
         address_line: addressLine,
         postal_code: postalCode,
         city,
-        payment_preference: paymentPreference
+        payment_preference: paymentPreference,
+        // Le prix et le titre sont figés à la demande : une modification
+        // ultérieure de l’œuvre ne doit jamais réécrire l’historique comptable.
+        artwork_title: artwork.title || "Œuvre sans titre",
+        amount: amount.toFixed(2),
+        currency: "EUR"
       })
     });
 

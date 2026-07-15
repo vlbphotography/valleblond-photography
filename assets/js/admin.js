@@ -90,6 +90,7 @@ function renderStudioShell(user, activeView, content) {
                     <button class="${activeView === "artwork" ? "is-active" : ""}" data-view="artwork" type="button" ${activeView === "artwork" ? 'aria-current="page"' : ""}>Créer une œuvre</button>
                     <button class="${activeView === "uploads" ? "is-active" : ""}" data-view="uploads" type="button" ${activeView === "uploads" ? 'aria-current="page"' : ""}>Ajouter une preview</button>
                     <button class="${activeView === "orders" ? "is-active" : ""}" data-view="orders" type="button" ${activeView === "orders" ? 'aria-current="page"' : ""}>Commandes</button>
+                    <button class="${activeView === "accounting" ? "is-active" : ""}" data-view="accounting" type="button" ${activeView === "accounting" ? 'aria-current="page"' : ""}>Comptabilité</button>
                     <button type="button" disabled title="Disponible au sprint Collections">Collections</button>
                 </nav>
                 <button class="logout-button" id="logout-button" type="button">Se déconnecter</button>
@@ -122,6 +123,11 @@ function renderStudioShell(user, activeView, content) {
 
             if (button.dataset.view === "orders") {
                 renderOrders(user);
+                return;
+            }
+
+            if (button.dataset.view === "accounting") {
+                renderAccounting(user);
                 return;
             }
 
@@ -742,6 +748,225 @@ async function renderOrders(user) {
 
         list.append(row);
     });
+}
+
+function formatAccountingAmount(amount, currency = "EUR") {
+    return new Intl.NumberFormat("fr-FR", {
+        style: "currency",
+        currency: currency || "EUR"
+    }).format(Number(amount || 0));
+}
+
+function formatCsvValue(value) {
+    let normalized = String(value ?? "").replace(/\r?\n/g, " ");
+
+    // Empêche qu'une valeur venant d'un client soit interprétée comme une
+    // formule à l'ouverture du CSV dans Excel ou Numbers.
+    if (/^[=+\-@]/.test(normalized)) normalized = `'${normalized}`;
+
+    return `"${normalized.replace(/"/g, '""')}"`;
+}
+
+function getAccountingMonthBounds(monthValue) {
+    if (!/^\d{4}-\d{2}$/.test(monthValue)) return null;
+
+    const [year, month] = monthValue.split("-").map(Number);
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 1);
+
+    return { start, end };
+}
+
+function filterAccountingEntries(entries, monthValue) {
+    const bounds = getAccountingMonthBounds(monthValue);
+
+    if (!bounds) return entries;
+
+    return entries.filter((entry) => {
+        const date = new Date(entry.date);
+        return date >= bounds.start && date < bounds.end;
+    });
+}
+
+function createAccountingEntry(data) {
+    const article = document.createElement("article");
+    const dateColumn = document.createElement("div");
+    const saleColumn = document.createElement("div");
+    const amount = document.createElement("p");
+    const date = document.createElement("time");
+    const type = document.createElement("p");
+    const title = document.createElement("strong");
+    const client = document.createElement("p");
+    const reference = document.createElement("p");
+
+    article.className = "accounting-entry";
+    date.dateTime = data.date;
+    date.textContent = formatArtworkDate(data.date);
+    type.textContent = data.type;
+    title.textContent = data.artworkTitle || "Œuvre sans titre";
+    client.textContent = data.buyerEmail || "Client non renseigné";
+    reference.textContent = `Réf. ${data.reference}`;
+    amount.className = "accounting-amount";
+    amount.textContent = formatAccountingAmount(data.amount, data.currency);
+
+    dateColumn.append(date);
+    saleColumn.append(type, title, client, reference);
+    article.append(dateColumn, saleColumn, amount);
+
+    return article;
+}
+
+function renderAccountingEntries(entries, monthValue) {
+    const list = document.getElementById("accounting-list");
+    const total = document.getElementById("accounting-total");
+    const count = document.getElementById("accounting-count");
+    const period = document.getElementById("accounting-period");
+    const exportButton = document.getElementById("accounting-export");
+    const filteredEntries = filterAccountingEntries(entries, monthValue);
+    const totalAmount = filteredEntries.reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+    const bounds = getAccountingMonthBounds(monthValue);
+
+    total.textContent = formatAccountingAmount(totalAmount);
+    count.textContent = filteredEntries.length;
+    period.textContent = bounds
+        ? new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" }).format(bounds.start)
+        : "toutes périodes";
+    exportButton.disabled = !filteredEntries.length;
+    exportButton.onclick = () => exportAccountingCsv(filteredEntries, monthValue);
+
+    list.replaceChildren();
+
+    if (!filteredEntries.length) {
+        list.innerHTML = '<p class="empty-state">Aucun paiement encaissé sur cette période.</p>';
+        return;
+    }
+
+    filteredEntries.forEach((entry) => list.append(createAccountingEntry(entry)));
+}
+
+function exportAccountingCsv(entries, monthValue) {
+    const header = ["Date d’encaissement", "Référence", "Type", "Œuvre", "Client", "Montant encaissé", "Devise", "Moyen de paiement", "Statut"];
+    const rows = entries.map((entry) => [
+        new Date(entry.date).toLocaleDateString("fr-FR"),
+        entry.reference,
+        entry.type,
+        entry.artworkTitle || "Œuvre sans titre",
+        entry.buyerEmail || "",
+        Number(entry.amount || 0).toFixed(2).replace(".", ","),
+        entry.currency || "EUR",
+        entry.paymentMethod,
+        "Encaissé"
+    ]);
+    const csv = [header, ...rows]
+        .map((row) => row.map(formatCsvValue).join(";"))
+        .join("\r\n");
+    const file = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+    const download = document.createElement("a");
+    const url = URL.createObjectURL(file);
+    const filePeriod = /^\d{4}-\d{2}$/.test(monthValue) ? monthValue : "complet";
+
+    download.href = url;
+    download.download = `valleblond-registre-recettes-${filePeriod}.csv`;
+    document.body.append(download);
+    download.click();
+    download.remove();
+    URL.revokeObjectURL(url);
+}
+
+async function loadAccounting(monthValue) {
+    const status = document.getElementById("accounting-status");
+    const [digitalResult, printResult, localResult] = await Promise.all([
+        supabaseClient
+            .from("digital_orders")
+            .select("id, paypal_capture_id, buyer_email, amount, currency, completed_at, Artworks(title)")
+            .eq("status", "completed")
+            .order("completed_at", { ascending: false }),
+        supabaseClient
+            .from("print_orders")
+            .select("id, paypal_capture_id, buyer_email, amount, currency, completed_at, Artworks(title)")
+            .eq("status", "completed")
+            .order("completed_at", { ascending: false }),
+        supabaseClient
+            .from("local_delivery_requests")
+            .select("id, buyer_email, artwork_title, amount, currency, paid_at, status, Artworks(title)")
+            .in("status", ["paid_in_person", "delivered"])
+            .order("paid_at", { ascending: false })
+    ]);
+
+    if (digitalResult.error || printResult.error || localResult.error) {
+        console.error("Impossible de charger le registre comptable :", {
+            digital: digitalResult.error,
+            print: printResult.error,
+            local: localResult.error
+        });
+        status.textContent = "Le registre est indisponible. Vérifiez que supabase/setup-accounting.sql a bien été exécuté.";
+        return;
+    }
+
+    const entries = [
+        ...(digitalResult.data || []).map((order) => ({
+            date: order.completed_at,
+            reference: order.paypal_capture_id || order.id,
+            type: "Fichier numérique",
+            artworkTitle: order.Artworks?.title,
+            buyerEmail: order.buyer_email,
+            amount: order.amount,
+            currency: order.currency,
+            paymentMethod: "PayPal"
+        })),
+        ...(printResult.data || []).map((order) => ({
+            date: order.completed_at,
+            reference: order.paypal_capture_id || order.id,
+            type: "Tirage physique",
+            artworkTitle: order.Artworks?.title,
+            buyerEmail: order.buyer_email,
+            amount: order.amount,
+            currency: order.currency,
+            paymentMethod: "PayPal"
+        })),
+        ...(localResult.data || []).filter((order) => order.amount !== null && order.paid_at).map((order) => ({
+            date: order.paid_at,
+            reference: order.id,
+            type: "Livraison personnelle",
+            artworkTitle: order.artwork_title || order.Artworks?.title,
+            buyerEmail: order.buyer_email,
+            amount: order.amount,
+            currency: order.currency || "EUR",
+            paymentMethod: "Paiement en main propre"
+        }))
+    ].filter((entry) => entry.date).sort((first, second) => new Date(second.date) - new Date(first.date));
+
+    renderAccountingEntries(entries, monthValue);
+}
+
+function renderAccounting(user) {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+
+    renderStudioShell(user, "accounting", `
+        <p class="eyebrow">REGISTRE DES RECETTES</p>
+        <h1 class="display">Comptabilité</h1>
+        <p class="dashboard-intro">Les paiements confirmés sont regroupés automatiquement. L’export contient uniquement les montants encaissés, sans adresse client ni frais PayPal.</p>
+        <div class="accounting-toolbar">
+            <label class="form-field" for="accounting-month">Période
+                <input id="accounting-month" type="month" value="${currentMonth}">
+            </label>
+            <button class="btn btn-primary" id="accounting-export" type="button" disabled>Exporter pour Excel</button>
+        </div>
+        <p class="form-message" id="accounting-status" aria-live="polite"></p>
+        <section class="accounting-summary" aria-label="Résumé des recettes">
+            <article class="accounting-card"><p>Recettes encaissées</p><strong id="accounting-total">…</strong></article>
+            <article class="accounting-card"><p>Paiements enregistrés</p><strong id="accounting-count">…</strong></article>
+            <article class="accounting-card"><p>Période affichée</p><strong id="accounting-period">…</strong></article>
+        </section>
+        <section class="recent-section" aria-labelledby="accounting-title">
+            <div class="section-heading"><div><p class="eyebrow">ENCAISSEMENTS</p><h2 class="display" id="accounting-title">Registre</h2></div><span>Export CSV compatible Excel et Numbers</span></div>
+            <div class="accounting-list" id="accounting-list">Chargement du registre…</div>
+        </section>
+    `);
+
+    const monthInput = document.getElementById("accounting-month");
+    monthInput.addEventListener("change", () => loadAccounting(monthInput.value));
+    loadAccounting(currentMonth);
 }
 
 function openDeleteDialog(user, artwork) {

@@ -17,6 +17,11 @@ create table if not exists public.local_delivery_requests (
   address_line text not null,
   postal_code text not null,
   city text not null,
+  -- Ces valeurs sont conservées au moment de la demande afin de ne jamais
+  -- modifier une vente passée si le titre ou le prix de l’œuvre évolue.
+  artwork_title text,
+  amount numeric(10,2) check (amount >= 0),
+  currency text,
   payment_preference text not null default 'pay_on_delivery'
     check (payment_preference in ('pay_on_delivery', 'paypal_after_approval')),
   payment_method text
