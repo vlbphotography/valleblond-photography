@@ -43,10 +43,28 @@ export default async (request) => {
         const pagesPayload = await pagesResponse.json();
         if (!pagesResponse.ok) throw new Error(pagesPayload.error?.message || "Facebook n'a pas retourné les Pages administrées.");
 
-        const page = (pagesPayload.data || []).find((candidate) => candidate.instagram_business_account?.id && candidate.access_token);
+        // Facebook peut retourner la Page et son compte Instagram sans inclure
+        // immédiatement le jeton de Page dans cette première liste. On ne doit
+        // donc pas écarter une liaison valide à cette étape.
+        const page = (pagesPayload.data || []).find((candidate) => candidate.instagram_business_account?.id);
         if (!page) throw new Error("Aucune Page Facebook liée à un compte Instagram professionnel n'a été trouvée.");
 
         const instagram = page.instagram_business_account;
+        let pageAccessToken = page.access_token || null;
+
+        if (!pageAccessToken) {
+            const pageTokenResponse = await fetch(facebookGraphUrl(page.id, {
+                fields: "id,name,access_token",
+                access_token: userToken.access_token
+            }));
+            const pageDetails = await pageTokenResponse.json();
+            if (!pageTokenResponse.ok || !pageDetails.access_token) {
+                throw new Error(pageDetails.error?.message || "Facebook n'a pas fourni le jeton d’accès de la Page autorisée.");
+            }
+            pageAccessToken = pageDetails.access_token;
+            page.name = page.name || pageDetails.name || null;
+        }
+
         const expiresAt = userToken.expires_in
             ? new Date(Date.now() + Number(userToken.expires_in) * 1000).toISOString()
             : null;
@@ -60,7 +78,7 @@ export default async (request) => {
                 instagram_username: instagram.username || null,
                 facebook_page_id: String(page.id),
                 facebook_page_name: page.name || null,
-                page_access_token: page.access_token,
+                page_access_token: pageAccessToken,
                 token_expires_at: expiresAt,
                 updated_at: new Date().toISOString()
             })
