@@ -5,9 +5,14 @@ import {
     publicArtworkUrl,
     requireStudioAdmin,
     slugFromInstagramId,
-    supabaseRequest,
-    titleFromCaption
+    supabaseRequest
 } from "./instagram-utils.js";
+
+// Instagram fournit une légende, pas le titre éditorial d'une œuvre. Ces
+// libellés temporaires obligent à choisir un vrai titre dans le Studio avant
+// toute publication, sans perdre le texte original dans la description.
+const UNTITLED_ARTWORK = "Titre à définir";
+const UNTITLED_COLLECTION = "Collection à nommer";
 
 function isImage(media) {
     return media?.media_type === "IMAGE" && Boolean(media.media_url);
@@ -59,13 +64,12 @@ async function importArtwork(media, parentCaption = "", parentTimestamp = null, 
     const timestamp = parentTimestamp || media.timestamp || new Date().toISOString();
     const caption = cleanCaption(parentCaption || media.caption || "");
     const imageUrl = await uploadPreview(media, timestamp);
-    const title = titleFromCaption(caption, timestamp);
     const year = new Date(timestamp).getUTCFullYear();
     const created = await supabaseRequest("/rest/v1/Artworks", {
         method: "POST",
         headers: { "Content-Type": "application/json", Prefer: "return=representation" },
         body: JSON.stringify({
-            title,
+            title: UNTITLED_ARTWORK,
             slug: slugFromInstagramId(media.id),
             description: caption || null,
             year: Number.isInteger(year) ? year : null,
@@ -102,12 +106,11 @@ async function importCarousel(media) {
         if (artwork.created) createdArtworks += 1;
     }
 
-    const title = titleFromCaption(caption, media.timestamp, "Collection Instagram");
     const collection = await supabaseRequest("/rest/v1/collections", {
         method: "POST",
         headers: { "Content-Type": "application/json", Prefer: "return=representation" },
         body: JSON.stringify({
-            title,
+            title: UNTITLED_COLLECTION,
             slug: slugFromInstagramId(media.id),
             description: caption || null,
             is_published: false,
