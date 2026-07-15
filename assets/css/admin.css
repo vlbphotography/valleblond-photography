@@ -705,6 +705,82 @@
     margin-top: var(--space-md);
 }
 
+.instagram-panel {
+    background: var(--surface);
+    margin-top: var(--space-lg);
+    max-width: 46rem;
+    padding: clamp(1.5rem, 4vw, 3rem);
+}
+
+.instagram-panel h2 {
+    font-size: clamp(1.8rem, 3vw, 2.5rem);
+    font-weight: 400;
+    margin-bottom: var(--space-sm);
+}
+
+.instagram-note {
+    color: var(--text-light);
+    font-size: 0.875rem;
+    line-height: 1.65;
+    margin-top: var(--space-sm);
+}
+
+.publication-type {
+    display: grid;
+    gap: var(--space-sm);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: var(--space-lg);
+}
+
+.publication-type label {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    padding: 1rem;
+}
+
+.publication-type label:has(input:checked) {
+    border-color: var(--text);
+}
+
+.publication-type input {
+    margin-right: 0.55rem;
+}
+
+.publication-images {
+    display: grid;
+    gap: var(--space-sm);
+    margin-top: var(--space-sm);
+}
+
+.publication-image {
+    align-items: center;
+    background: var(--surface);
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 7rem minmax(0, 1fr);
+    padding: 0.75rem;
+}
+
+.publication-image img {
+    aspect-ratio: 1;
+    object-fit: cover;
+    width: 7rem;
+}
+
+.publication-image label {
+    display: grid;
+    font-size: 0.875rem;
+    gap: 0.5rem;
+}
+
+.publication-image input {
+    background: transparent;
+    border: 1px solid var(--border);
+    min-height: 2.75rem;
+    padding: 0.6rem 0.75rem;
+}
+
 @media (max-width: 760px) {
     .studio {
         grid-template-columns: 1fr;
@@ -764,6 +840,14 @@
 
     .form-grid,
     .preview-choices {
+        grid-template-columns: 1fr;
+    }
+
+    .publication-type {
+        grid-template-columns: 1fr;
+    }
+
+    .publication-image {
         grid-template-columns: 1fr;
     }
 

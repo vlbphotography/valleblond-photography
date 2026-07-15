@@ -86,12 +86,12 @@ function renderStudioShell(user, activeView, content) {
                 <p class="studio-label">PHOTOGRAPHY · STUDIO</p>
                 <nav class="studio-nav" aria-label="Navigation du Studio">
                     <button class="${activeView === "dashboard" ? "is-active" : ""}" data-view="dashboard" type="button" ${activeView === "dashboard" ? 'aria-current="page"' : ""}>Vue d'ensemble</button>
-                    <button class="${activeView === "artworks" ? "is-active" : ""}" data-view="artworks" type="button" ${activeView === "artworks" ? 'aria-current="page"' : ""}>Œuvres</button>
-                    <button class="${activeView === "artwork" ? "is-active" : ""}" data-view="artwork" type="button" ${activeView === "artwork" ? 'aria-current="page"' : ""}>Créer une œuvre</button>
-                    <button class="${activeView === "uploads" ? "is-active" : ""}" data-view="uploads" type="button" ${activeView === "uploads" ? 'aria-current="page"' : ""}>Ajouter une preview</button>
+                    <button class="${activeView === "publication" ? "is-active" : ""}" data-view="publication" type="button" ${activeView === "publication" ? 'aria-current="page"' : ""}>Nouvelle publication</button>
+                    <button class="${activeView === "artworks" ? "is-active" : ""}" data-view="artworks" type="button" ${activeView === "artworks" ? 'aria-current="page"' : ""}>Catalogue</button>
                     <button class="${activeView === "orders" ? "is-active" : ""}" data-view="orders" type="button" ${activeView === "orders" ? 'aria-current="page"' : ""}>Commandes</button>
                     <button class="${activeView === "accounting" ? "is-active" : ""}" data-view="accounting" type="button" ${activeView === "accounting" ? 'aria-current="page"' : ""}>Comptabilité</button>
                     <button class="${activeView === "collections" ? "is-active" : ""}" data-view="collections" type="button" ${activeView === "collections" ? 'aria-current="page"' : ""}>Collections</button>
+                    <button class="${activeView === "instagram" ? "is-active" : ""}" data-view="instagram" type="button" ${activeView === "instagram" ? 'aria-current="page"' : ""}>Instagram</button>
                 </nav>
                 <button class="logout-button" id="logout-button" type="button">Se déconnecter</button>
             </aside>
@@ -111,8 +111,8 @@ function renderStudioShell(user, activeView, content) {
                 return;
             }
 
-            if (button.dataset.view === "artwork") {
-                renderArtworkCreation(user);
+            if (button.dataset.view === "publication") {
+                renderPublicationComposer(user);
                 return;
             }
 
@@ -136,7 +136,12 @@ function renderStudioShell(user, activeView, content) {
                 return;
             }
 
-            renderPreviewUpload(user);
+            if (button.dataset.view === "instagram") {
+                renderInstagram(user);
+                return;
+            }
+
+            renderPublicationComposer(user);
         });
     });
 }
@@ -295,6 +300,16 @@ function createSlug(title) {
     return slug || "oeuvre";
 }
 
+function escapeHtmlAttribute(value) {
+    return String(value || "").replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    }[character]));
+}
+
 function createPendingUploadOption(upload) {
     const label = document.createElement("label");
     const input = document.createElement("input");
@@ -360,6 +375,285 @@ async function loadPendingUploads() {
     });
 
     button.disabled = true;
+}
+
+/* ============================================================
+   Publication unifiée
+
+   L'envoi de preview et la création de l'œuvre restent deux opérations
+   techniques distinctes dans Supabase, mais ne forment plus deux étapes
+   visibles pour Valentin. Cette vue les enchaîne de manière atomique.
+   ============================================================ */
+
+function titleFromFileName(fileName) {
+    return fileName
+        .replace(/\.[^.]+$/, "")
+        .replace(/[-_]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 140) || "Sans titre";
+}
+
+async function uploadPublicationPreview(file, user) {
+    const extension = getFileExtension(file);
+    const storagePath = createStorageFileName(extension);
+    const { error: storageError } = await supabaseClient.storage
+        .from(CONFIG.ARTWORKS_BUCKET)
+        .upload(storagePath, file, {
+            cacheControl: "31536000",
+            contentType: file.type,
+            upsert: false
+        });
+
+    if (storageError) throw new Error("L’envoi de l’image a échoué.");
+
+    const { data: upload, error: databaseError } = await supabaseClient
+        .from(CONFIG.UPLOADS_TABLE)
+        .insert({
+            storage_path: storagePath,
+            original_name: file.name,
+            mime_type: file.type,
+            file_size_bytes: file.size,
+            created_by: user.id
+        })
+        .select("id")
+        .single();
+
+    if (databaseError || !upload?.id) {
+        await supabaseClient.storage.from(CONFIG.ARTWORKS_BUCKET).remove([storagePath]);
+        throw new Error("L’image n’a pas pu être enregistrée dans le Studio.");
+    }
+
+    return upload.id;
+}
+
+async function createPublishedArtwork(uploadId, values) {
+    const { data: artworkId, error } = await supabaseClient.rpc("create_artwork_from_upload", {
+        p_upload_id: uploadId,
+        p_title: values.title,
+        p_slug: createSlug(values.title),
+        p_location: values.location,
+        p_year: values.year,
+        p_description: values.description,
+        p_format: values.format,
+        p_price_digital: values.priceDigital,
+        p_price_physical: values.pricePhysical,
+        p_is_published: values.isPublished
+    });
+
+    if (error || !artworkId) throw new Error("L’œuvre n’a pas pu être créée.");
+    return artworkId;
+}
+
+function renderPublicationImageInputs(files, container) {
+    container.replaceChildren();
+    Array.from(files).forEach((file, index) => {
+        const card = document.createElement("article");
+        const image = document.createElement("img");
+        const details = document.createElement("div");
+        const titleLabel = document.createElement("label");
+        const titleInput = document.createElement("input");
+        const name = document.createElement("p");
+        const url = URL.createObjectURL(file);
+
+        card.className = "publication-image";
+        image.src = url;
+        image.alt = `Aperçu ${index + 1}`;
+        image.onload = () => URL.revokeObjectURL(url);
+        titleLabel.textContent = `Titre de l’image ${index + 1}`;
+        titleInput.name = "image-title";
+        titleInput.maxLength = 140;
+        titleInput.required = true;
+        titleInput.value = titleFromFileName(file.name);
+        name.className = "instagram-note";
+        name.textContent = file.name;
+        details.append(titleLabel, titleInput, name);
+        card.append(image, details);
+        container.append(card);
+    });
+}
+
+function renderPublicationComposer(user, successMessage = "") {
+    const currentYear = new Date().getFullYear() + 1;
+
+    renderStudioShell(user, "publication", `
+        <p class="eyebrow">PUBLICATION</p>
+        <h1 class="display">Nouvelle publication</h1>
+        <p class="dashboard-intro">Choisis tes images, renseigne les informations, puis publie. Le Studio prépare automatiquement les previews et les œuvres.</p>
+        <form class="artwork-form" id="publication-form" novalidate>
+            <div class="publication-type" role="radiogroup" aria-label="Type de publication">
+                <label><input type="radio" name="publication-type" value="single" checked><span>Une œuvre</span></label>
+                <label><input type="radio" name="publication-type" value="carousel"><span>Un carrousel</span></label>
+            </div>
+            <fieldset class="form-section">
+                <legend class="display">1. Images</legend>
+                <label class="upload-dropzone" for="publication-files">
+                    <span class="upload-dropzone-title display">Choisir une image</span>
+                    <span id="publication-file-help">JPEG, PNG ou WebP · 15 Mo maximum</span>
+                    <input id="publication-files" name="publication-files" type="file" accept="image/jpeg,image/png,image/webp" required>
+                </label>
+                <div class="publication-images" id="publication-images"></div>
+            </fieldset>
+            <fieldset class="form-section">
+                <legend class="display">2. Présentation</legend>
+                <div class="form-grid">
+                    <label class="form-field form-field-wide"><span id="publication-title-label">Titre</span>
+                        <input id="publication-title" name="title" type="text" maxlength="140" required>
+                    </label>
+                    <label class="form-field">Lieu
+                        <input id="publication-location" name="location" type="text" maxlength="140" placeholder="Amiens, France">
+                    </label>
+                    <label class="form-field">Année
+                        <input id="publication-year" name="year" type="number" min="1800" max="${currentYear}" placeholder="2026">
+                    </label>
+                    <label class="form-field form-field-wide">Description
+                        <textarea id="publication-description" name="description" rows="5" maxlength="1200"></textarea>
+                    </label>
+                </div>
+            </fieldset>
+            <fieldset class="form-section">
+                <legend class="display">3. Vente et publication</legend>
+                <div class="form-grid">
+                    <label class="form-field form-field-wide">Format de tirage
+                        <input id="publication-format" name="format" type="text" maxlength="140" placeholder="Ex. Tirage fine art · 30 × 40 cm">
+                    </label>
+                    <label class="form-field">Prix numérique par image (€)
+                        <input id="publication-price-digital" name="price-digital" type="number" min="0" step="0.01" inputmode="decimal" placeholder="18">
+                    </label>
+                    <label class="form-field">Prix tirage par image (€)
+                        <input id="publication-price-physical" name="price-physical" type="number" min="0" step="0.01" inputmode="decimal" placeholder="35">
+                    </label>
+                    <label class="form-field form-field-wide" id="collection-price-field" hidden>Prix du pack numérique (€)
+                        <input id="publication-pack-price" name="pack-price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Ex. 60">
+                    </label>
+                </div>
+                <label class="publish-toggle"><input id="publication-publish-artworks" name="publish-artworks" type="checkbox" checked><span id="publication-publish-artworks-label">Publier l’œuvre dans la galerie</span></label>
+                <label class="publish-toggle" id="collection-publish-toggle" hidden><input id="publication-publish-collection" name="publish-collection" type="checkbox" checked><span>Publier le carrousel dans la galerie</span></label>
+            </fieldset>
+            <p class="form-message" id="publication-message" aria-live="polite"></p>
+            <button class="btn btn-primary" id="publication-submit" type="submit">Publier l’œuvre</button>
+        </form>
+    `);
+
+    const form = document.getElementById("publication-form");
+    const filesInput = document.getElementById("publication-files");
+    const filesContainer = document.getElementById("publication-images");
+    const message = document.getElementById("publication-message");
+    const submit = document.getElementById("publication-submit");
+    const typeInputs = form.querySelectorAll('input[name="publication-type"]');
+    let selectedFiles = [];
+
+    const updateMode = () => {
+        const isCarousel = form.querySelector('input[name="publication-type"]:checked').value === "carousel";
+        filesInput.multiple = isCarousel;
+        document.querySelector(".upload-dropzone-title").textContent = isCarousel ? "Choisir les images" : "Choisir une image";
+        document.getElementById("publication-file-help").textContent = isCarousel ? "Au moins 2 images · JPEG, PNG ou WebP · 15 Mo maximum par image" : "JPEG, PNG ou WebP · 15 Mo maximum";
+        document.getElementById("publication-title-label").textContent = isCarousel ? "Titre de la collection" : "Titre";
+        document.getElementById("collection-price-field").hidden = !isCarousel;
+        document.getElementById("collection-publish-toggle").hidden = !isCarousel;
+        document.getElementById("publication-publish-artworks-label").textContent = isCarousel ? "Afficher aussi chaque image séparément dans la galerie" : "Publier l’œuvre dans la galerie";
+        form["publish-artworks"].checked = !isCarousel;
+        submit.textContent = isCarousel ? "Créer le carrousel" : "Publier l’œuvre";
+        selectedFiles = [];
+        filesInput.value = "";
+        filesContainer.replaceChildren();
+        message.textContent = "";
+    };
+
+    typeInputs.forEach((input) => input.addEventListener("change", updateMode));
+
+    filesInput.addEventListener("change", () => {
+        const isCarousel = form.querySelector('input[name="publication-type"]:checked').value === "carousel";
+        const files = Array.from(filesInput.files || []);
+        if (!files.length) return;
+        if ((!isCarousel && files.length !== 1) || (isCarousel && files.length < 2)) {
+            message.textContent = isCarousel ? "Choisis au moins deux images pour créer un carrousel." : "Choisis une seule image.";
+            selectedFiles = [];
+            filesInput.value = "";
+            filesContainer.replaceChildren();
+            return;
+        }
+        const invalidFile = files.find((file) => !CONFIG.PREVIEW_ALLOWED_TYPES.includes(file.type) || file.size > CONFIG.PREVIEW_MAX_FILE_SIZE);
+        if (invalidFile) {
+            message.textContent = "Chaque image doit être en JPEG, PNG ou WebP et faire moins de 15 Mo.";
+            selectedFiles = [];
+            filesInput.value = "";
+            filesContainer.replaceChildren();
+            return;
+        }
+        selectedFiles = files;
+        message.textContent = "";
+        renderPublicationImageInputs(files, filesContainer);
+    });
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const isCarousel = form.querySelector('input[name="publication-type"]:checked').value === "carousel";
+        const title = document.getElementById("publication-title").value.trim();
+        const imageTitles = Array.from(form.querySelectorAll('input[name="image-title"]')).map((input) => input.value.trim());
+
+        if (!selectedFiles.length || !title || imageTitles.some((imageTitle) => !imageTitle)) {
+            message.textContent = "Choisis les images et renseigne tous les titres avant de publier.";
+            return;
+        }
+        if (isCarousel && selectedFiles.length < 2) {
+            message.textContent = "Un carrousel nécessite au moins deux images.";
+            return;
+        }
+
+        const year = form.year.value ? Number(form.year.value) : null;
+        const sharedValues = {
+            location: form.location.value.trim(),
+            year,
+            description: form.description.value.trim(),
+            format: form.format.value.trim(),
+            priceDigital: form["price-digital"].value ? Number(form["price-digital"].value) : null,
+            pricePhysical: form["price-physical"].value ? Number(form["price-physical"].value) : null,
+            isPublished: form["publish-artworks"].checked
+        };
+
+        submit.disabled = true;
+        submit.textContent = "Publication en cours…";
+        message.classList.remove("is-success");
+        message.textContent = "Préparation des images…";
+
+        try {
+            const artworkIds = [];
+            for (let index = 0; index < selectedFiles.length; index += 1) {
+                message.textContent = `Envoi de l’image ${index + 1} sur ${selectedFiles.length}…`;
+                const uploadId = await uploadPublicationPreview(selectedFiles[index], user);
+                const artworkId = await createPublishedArtwork(uploadId, { ...sharedValues, title: isCarousel ? imageTitles[index] : title });
+                artworkIds.push(artworkId);
+            }
+
+            if (isCarousel) {
+                message.textContent = "Création du carrousel…";
+                const { error } = await supabaseClient.rpc("save_collection", {
+                    p_collection_id: null,
+                    p_title: title,
+                    p_slug: createSlug(title),
+                    p_description: sharedValues.description,
+                    p_price_digital_pack: form["pack-price"].value ? Number(form["pack-price"].value) : null,
+                    p_is_published: form["publish-collection"].checked,
+                    p_show_items_on_home: false,
+                    p_artwork_ids: artworkIds
+                });
+                if (error) throw new Error("Le carrousel n’a pas pu être créé.");
+            }
+
+            renderPublicationComposer(user, isCarousel ? "Le carrousel et ses œuvres ont été créés." : "L’œuvre a été créée.");
+        } catch (error) {
+            console.error("Impossible de créer la publication :", error);
+            submit.disabled = false;
+            submit.textContent = isCarousel ? "Créer le carrousel" : "Publier l’œuvre";
+            message.textContent = `${error.message || "La publication n’a pas pu être créée."} Les images déjà envoyées restent en brouillon dans le Studio.`;
+        }
+    });
+
+    if (successMessage) {
+        message.classList.add("is-success");
+        message.textContent = successMessage;
+    }
 }
 
 function renderArtworkCreation(user, successMessage = "") {
@@ -825,8 +1119,8 @@ function renderCollectionEditor(user, collection = null) {
         <p class="dashboard-intro">Une collection présente une série comme un carrousel et peut proposer un pack numérique. Les œuvres restent achetables individuellement.</p>
         <form class="artwork-form" id="collection-form" novalidate>
             <fieldset class="form-section"><legend class="display">1. Présentation</legend><div class="form-grid">
-                <label class="form-field form-field-wide">Titre<input name="title" maxlength="140" required value="${collection?.title || ""}"></label>
-                <label class="form-field form-field-wide">Description<input name="description" maxlength="1200" value="${collection?.description || ""}"></label>
+                <label class="form-field form-field-wide">Titre<input name="title" maxlength="140" required value="${escapeHtmlAttribute(collection?.title)}"></label>
+                <label class="form-field form-field-wide">Description<input name="description" maxlength="1200" value="${escapeHtmlAttribute(collection?.description)}"></label>
                 <label class="form-field">Prix du pack numérique (€)<input name="pack-price" type="number" min="0" step="0.01" inputmode="decimal" value="${collection?.price_digital_pack ?? ""}" placeholder="Ex. 60"></label>
             </div></fieldset>
             <fieldset class="form-section"><legend class="display">2. Images du carrousel</legend><p class="dashboard-intro">Sélectionnez au moins deux œuvres. Leur ordre suit l’ordre d’affichage ci-dessous ; pour une importation Instagram, il sera conservé automatiquement.</p><div class="preview-choices" id="collection-artwork-choices"></div></fieldset>
@@ -901,8 +1195,7 @@ function createCollectionListItem(collection, user) {
 }
 
 async function renderCollectionList(user, successMessage = "") {
-    renderStudioShell(user, "collections", '<p class="eyebrow">SÉRIES</p><h1 class="display">Collections</h1><p class="dashboard-intro">Créez des carrousels éditoriaux visibles sur l’accueil. Chaque œuvre reste indépendante ; le pack numérique est optionnel.</p><div class="editor-actions"><button class="btn btn-primary" id="new-collection" type="button">Créer une collection</button></div><p class="form-message" id="collection-list-message" aria-live="polite"></p><section class="studio-artwork-list" id="collection-list"></section>');
-    document.getElementById("new-collection").addEventListener("click", () => renderCollectionEditor(user));
+    renderStudioShell(user, "collections", '<p class="eyebrow">SÉRIES</p><h1 class="display">Collections</h1><p class="dashboard-intro">Les carrousels se créent depuis « Nouvelle publication ». Ici, vous pouvez les modifier, les publier ou les supprimer.</p><p class="form-message" id="collection-list-message" aria-live="polite"></p><section class="studio-artwork-list" id="collection-list"></section>');
     const message = document.getElementById("collection-list-message");
     if (successMessage) { message.classList.add("is-success"); message.textContent = successMessage; }
     const list = document.getElementById("collection-list");
@@ -910,6 +1203,168 @@ async function renderCollectionList(user, successMessage = "") {
     if (error) { list.textContent = "Les collections seront disponibles après l’activation de la fonctionnalité."; return; }
     if (!data?.length) { list.innerHTML = '<p class="empty-state">Aucune collection pour le moment.</p>'; return; }
     data.forEach((collection) => list.append(createCollectionListItem(collection, user)));
+}
+
+/* ============================================================
+   Instagram
+
+   Le navigateur n'obtient jamais de jeton Meta. Il transmet seulement la
+   session Supabase courante aux fonctions Netlify, qui vérifient le droit
+   d'administration du Studio avant chaque opération.
+   ============================================================ */
+
+async function studioRequest(endpoint, method = "GET") {
+    const { data, error } = await supabaseClient.auth.getSession();
+    const accessToken = data?.session?.access_token;
+    if (error || !accessToken) throw new Error("Votre session Studio a expiré. Reconnectez-vous.");
+
+    const response = await fetch(endpoint, {
+        method,
+        headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Une erreur est survenue.");
+    return payload;
+}
+
+function formatInstagramSyncDate(value) {
+    if (!value) return "Jamais synchronisé";
+    return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function renderInstagram(user) {
+    renderStudioShell(user, "instagram", `
+        <p class="eyebrow">PUBLICATION</p>
+        <h1 class="display">Instagram</h1>
+        <p class="dashboard-intro">Les publications photo arrivent dans le Studio comme brouillons. Les Reels sont ignorés. Un carrousel devient une collection, avec ses œuvres indépendantes dans le bon ordre.</p>
+        <section class="instagram-panel" id="instagram-panel" aria-live="polite">
+            <p class="dashboard-intro">Vérification de la connexion Instagram…</p>
+        </section>
+    `);
+
+    const panel = document.getElementById("instagram-panel");
+
+    const renderDisconnected = (message = "") => {
+        panel.replaceChildren();
+        const title = document.createElement("h2");
+        const text = document.createElement("p");
+        const note = document.createElement("p");
+        const connect = document.createElement("button");
+        const feedback = document.createElement("p");
+
+        title.className = "display";
+        title.textContent = "Connecter Instagram";
+        text.className = "dashboard-intro";
+        text.textContent = "Autorise une seule fois ton compte Instagram professionnel. Aucun mot de passe ni jeton Instagram ne passe par le Studio.";
+        note.className = "instagram-note";
+        note.textContent = "Après la connexion, tu pourras importer les 25 dernières publications photo en un clic.";
+        connect.className = "btn btn-primary";
+        connect.type = "button";
+        connect.textContent = "Connecter Instagram";
+        feedback.className = "form-message";
+        if (message) feedback.textContent = message;
+
+        connect.addEventListener("click", async () => {
+            connect.disabled = true;
+            connect.textContent = "Ouverture d’Instagram…";
+            feedback.textContent = "";
+            // Ouvre immédiatement la fenêtre : les navigateurs bloquent souvent
+            // une popup déclenchée seulement après une requête asynchrone.
+            const popup = window.open("", "valleblond-instagram", "popup=yes,width=580,height=760");
+            if (!popup) {
+                feedback.textContent = "Autorisez l’ouverture de la fenêtre Instagram, puis recommencez.";
+                connect.disabled = false;
+                connect.textContent = "Connecter Instagram";
+                return;
+            }
+            try {
+                const { authorizationUrl } = await studioRequest("/.netlify/functions/instagram-start", "POST");
+                popup.location.assign(authorizationUrl);
+                feedback.classList.add("is-success");
+                feedback.textContent = "La fenêtre Instagram est ouverte. Autorise l’accès, puis reviens ici.";
+                connect.disabled = false;
+                connect.textContent = "Ouvrir à nouveau";
+            } catch (error) {
+                popup.close();
+                feedback.textContent = error.message;
+                connect.disabled = false;
+                connect.textContent = "Connecter Instagram";
+            }
+        });
+
+        panel.append(title, text, note, connect, feedback);
+    };
+
+    const renderConnected = (connection) => {
+        panel.replaceChildren();
+        const title = document.createElement("h2");
+        const text = document.createElement("p");
+        const note = document.createElement("p");
+        const actions = document.createElement("div");
+        const sync = document.createElement("button");
+        const disconnect = document.createElement("button");
+        const feedback = document.createElement("p");
+
+        title.className = "display";
+        title.textContent = `@${connection.instagram_username || "Instagram"} est connecté`;
+        text.className = "dashboard-intro";
+        text.textContent = "Le compte Instagram professionnel est autorisé de manière sécurisée.";
+        note.className = "instagram-note";
+        note.textContent = `Dernière synchronisation : ${formatInstagramSyncDate(connection.last_sync_at)}. Les importations ne publient jamais automatiquement une œuvre.`;
+        actions.className = "editor-actions";
+        sync.className = "btn btn-primary";
+        sync.type = "button";
+        sync.textContent = "Synchroniser les publications";
+        disconnect.className = "btn";
+        disconnect.type = "button";
+        disconnect.textContent = "Déconnecter";
+        feedback.className = "form-message";
+
+        sync.addEventListener("click", async () => {
+            sync.disabled = true;
+            disconnect.disabled = true;
+            sync.textContent = "Synchronisation…";
+            feedback.textContent = "";
+            try {
+                const result = await studioRequest("/.netlify/functions/instagram-sync", "POST");
+                const total = result.artworks + result.collections;
+                feedback.classList.add("is-success");
+                feedback.textContent = `${result.artworks} œuvre${result.artworks > 1 ? "s" : ""} et ${result.collections} collection${result.collections > 1 ? "s" : ""} importée${total > 1 ? "s" : ""} en brouillon. ${result.reels ? `${result.reels} Reel${result.reels > 1 ? "s" : ""} ignoré${result.reels > 1 ? "s" : ""}. ` : ""}${result.alreadyImported ? `${result.alreadyImported} élément${result.alreadyImported > 1 ? "s déjà importés" : " déjà importé"}. ` : ""}${result.errors?.length ? "Certaines images n’ont pas pu être importées : réessaie dans quelques minutes." : ""}`;
+                sync.textContent = "Synchroniser à nouveau";
+            } catch (error) {
+                feedback.textContent = error.message;
+                sync.textContent = "Synchroniser les publications";
+            } finally {
+                sync.disabled = false;
+                disconnect.disabled = false;
+            }
+        });
+
+        disconnect.addEventListener("click", async () => {
+            if (!window.confirm("Déconnecter Instagram ? Les œuvres déjà importées seront conservées.")) return;
+            disconnect.disabled = true;
+            try {
+                await studioRequest("/.netlify/functions/instagram-disconnect", "POST");
+                renderDisconnected("Instagram est déconnecté. Les œuvres importées restent dans le Studio.");
+            } catch (error) {
+                feedback.textContent = error.message;
+                disconnect.disabled = false;
+            }
+        });
+
+        actions.append(sync, disconnect);
+        panel.append(title, text, note, actions, feedback);
+    };
+
+    const onInstagramConnection = (event) => {
+        if (event.origin !== window.location.origin || event.data?.type !== "valleblond-instagram") return;
+        if (event.data.success) renderInstagram(user);
+    };
+    window.addEventListener("message", onInstagramConnection, { once: true });
+
+    studioRequest("/.netlify/functions/instagram-status")
+        .then(({ connected, connection }) => connected ? renderConnected(connection) : renderDisconnected())
+        .catch((error) => renderDisconnected(error.message));
 }
 
 function formatAccountingAmount(amount, currency = "EUR") {
