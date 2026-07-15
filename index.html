@@ -264,12 +264,12 @@
   </nav>
 </footer>
 
+<script src="assets/js/config.js"></script>
 <script src="assets/js/i18n.js"></script>
 <script>
-  const supabaseUrl = 'https://wanwxjzfxlxunynnmxia.supabase.co';
-  const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhbnd4anpmeGx4dW55bm5teGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NTQxNjUsImV4cCI6MjA5OTUzMDE2NX0.B0yzXCKrRrVUVfUMpa_f2fI-TWXQ7VSeaRGIeDwFHaM';
-
-  const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
+  // La clé publique est centralisée dans config.js : si Supabase la renouvelle,
+  // la galerie et le Studio restent synchronisés sans clé ancienne cachée ici.
+  const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_PUBLISHABLE_KEY);
 
   function createCollectionCard(collection) {
     const { t, localized } = window.ValleblondI18n;

@@ -168,12 +168,11 @@
   </div>
 </div>
 
+<script src="../assets/js/config.js"></script>
 <script src="../assets/js/i18n.js"></script>
 <script>
-  const supabaseUrl = 'https://wanwxjzfxlxunynnmxia.supabase.co';
-  const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhbnd4anpmeGx4dW55bm5teGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NTQxNjUsImV4cCI6MjA5OTUzMDE2NX0.B0yzXCKrRrVUVfUMpa_f2fI-TWXQ7VSeaRGIeDwFHaM';
-
-  const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
+  // Même configuration que la galerie et le Studio.
+  const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_PUBLISHABLE_KEY);
 
   function showError(){
     document.getElementById('content-loading').style.display = 'none';
@@ -259,7 +258,6 @@
 
   window.onload = loadOeuvre;
 </script>
-<script src="../assets/js/config.js"></script>
 <script src="../assets/js/paypal.js"></script>
 
 </body>

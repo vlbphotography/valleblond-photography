@@ -1,6 +1,5 @@
 const SITE_URL = "https://vlbphotography.netlify.app";
 // Cette clé est publique et ne donne accès qu'aux œuvres publiées par les RLS.
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhbnd4anpmeGx4dW55bm5teGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NTQxNjUsImV4cCI6MjA5OTUzMDE2NX0.B0yzXCKrRrVUVfUMpa_f2fI-TWXQ7VSeaRGIeDwFHaM";
 
 function escapeXml(value) {
   return String(value)
@@ -13,9 +12,14 @@ function escapeXml(value) {
 
 // Liste automatiquement les œuvres publiées pour les moteurs de recherche.
 export default async () => {
+  // La fonction utilise une clé serveur déjà configurée dans Netlify. Cela
+  // évite qu'un renouvellement de clé publique bloque le sitemap SEO.
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!supabaseKey) return new Response("Sitemap unavailable", { status: 503 });
+
   const response = await fetch(
     `${process.env.SUPABASE_URL}/rest/v1/Artworks?is_published=eq.true&select=id,created_at`,
-    { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+    { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
   );
 
   if (!response.ok) {
