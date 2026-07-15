@@ -1,5 +1,6 @@
 // Doit rester synchronisé avec create-paypal-order.js : une commande créée
 // dans un environnement PayPal ne peut être capturée que dans celui-ci.
+import { sendTelegramAlert, telegramSaleMessage } from "./telegram.js";
 const paypalBaseUrl = process.env.PAYPAL_ENVIRONMENT === "live"
   ? "https://api-m.paypal.com"
   : "https://api-m.sandbox.paypal.com";
@@ -36,6 +37,13 @@ export default async (request) => {
     const error = await saveOrder.json().catch(() => ({}));
     return Response.json({ error: `Paiement confirmé, mais commande non enregistrée : ${error.message || saveOrder.status}` }, { status: 500 });
   }
+
+  await sendTelegramAlert(telegramSaleMessage({
+    type: "Fichier numérique",
+    amount: capture.amount.value,
+    currency: capture.amount.currency_code,
+    email: order.payer?.email_address
+  }));
 
   return Response.json({ success: true });
 };

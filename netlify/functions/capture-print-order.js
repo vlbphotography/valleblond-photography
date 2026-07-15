@@ -1,3 +1,5 @@
+import { sendTelegramAlert, telegramSaleMessage } from "./telegram.js";
+
 const paypalBaseUrl = process.env.PAYPAL_ENVIRONMENT === "live"
   ? "https://api-m.paypal.com"
   : "https://api-m.sandbox.paypal.com";
@@ -108,9 +110,17 @@ export default async (request) => {
       return errorResponse("Paiement confirmé, mais commande non enregistrée. Contactez-nous.");
     }
 
+    await sendTelegramAlert(telegramSaleMessage({
+      type: `Tirage physique · ${shipping.label}`,
+      amount: capture.amount.value,
+      currency: capture.amount.currency_code,
+      email: order.payer?.email_address
+    }));
+
     return Response.json({ success: true });
   } catch (error) {
     console.error("capture-print-order", error);
+    await sendTelegramAlert(`⚠️ Erreur de commande tirage\n${error.message || "Erreur inconnue"}`);
     return errorResponse("Paiement indisponible pour le moment.");
   }
 };

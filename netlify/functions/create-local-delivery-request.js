@@ -1,6 +1,7 @@
 // Enregistre une demande locale sans jamais créer de paiement. Cette fonction
 // utilise la clé service_role uniquement côté Netlify : elle ne sera jamais
 // exposée dans le navigateur du visiteur.
+import { sendTelegramAlert } from "./telegram.js";
 
 function errorResponse(message, status = 400) {
   return Response.json({ error: message }, { status });
@@ -93,6 +94,15 @@ export default async (request) => {
       console.error("create-local-delivery-request", await insertResponse.text());
       return errorResponse("Votre demande n’a pas pu être enregistrée. Réessayez dans quelques instants.", 500);
     }
+
+    await sendTelegramAlert([
+      "📍 Nouvelle demande de livraison locale",
+      `Œuvre : ${artwork.title || "Œuvre sans titre"}`,
+      `Client : ${buyerName}`,
+      `Email : ${buyerEmail}`,
+      `Ville : ${postalCode} ${city}`,
+      "→ À valider dans le Studio : https://vlbphotography.netlify.app/pages/admin/"
+    ].join("\n"));
 
     return Response.json({ success: true });
   } catch (error) {

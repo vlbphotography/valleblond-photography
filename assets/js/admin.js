@@ -92,6 +92,7 @@ function renderStudioShell(user, activeView, content) {
                     <button class="${activeView === "accounting" ? "is-active" : ""}" data-view="accounting" type="button" ${activeView === "accounting" ? 'aria-current="page"' : ""}>Comptabilité</button>
                     <button class="${activeView === "collections" ? "is-active" : ""}" data-view="collections" type="button" ${activeView === "collections" ? 'aria-current="page"' : ""}>Collections</button>
                     <button class="${activeView === "instagram" ? "is-active" : ""}" data-view="instagram" type="button" ${activeView === "instagram" ? 'aria-current="page"' : ""}>Instagram</button>
+                    <button class="${activeView === "alerts" ? "is-active" : ""}" data-view="alerts" type="button" ${activeView === "alerts" ? 'aria-current="page"' : ""}>Alertes</button>
                 </nav>
                 <button class="logout-button" id="logout-button" type="button">Se déconnecter</button>
             </aside>
@@ -138,6 +139,11 @@ function renderStudioShell(user, activeView, content) {
 
             if (button.dataset.view === "instagram") {
                 renderInstagram(user);
+                return;
+            }
+
+            if (button.dataset.view === "alerts") {
+                renderTelegramAlerts(user);
                 return;
             }
 
@@ -1245,6 +1251,38 @@ async function studioRequest(endpoint, method = "GET") {
 function formatInstagramSyncDate(value) {
     if (!value) return "Jamais synchronisé";
     return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function renderTelegramAlerts(user) {
+    renderStudioShell(user, "alerts", `
+        <p class="eyebrow">SURVEILLANCE</p>
+        <h1 class="display">Alertes Telegram</h1>
+        <section class="instagram-panel">
+            <h2 class="display">Valleblond Monitor</h2>
+            <p class="dashboard-intro">Le bot te prévient immédiatement lors d’une vente numérique, d’une commande de tirage ou d’une demande de livraison locale. Les alertes Telegram ne bloquent jamais un paiement.</p>
+            <button class="btn btn-primary" id="telegram-test" type="button">Envoyer un message de test</button>
+            <p class="form-message" id="telegram-message" aria-live="polite"></p>
+        </section>
+    `);
+
+    const button = document.getElementById("telegram-test");
+    const message = document.getElementById("telegram-message");
+    button.addEventListener("click", async () => {
+        button.disabled = true;
+        button.textContent = "Envoi…";
+        message.classList.remove("is-success");
+        message.textContent = "";
+        try {
+            await studioRequest("/.netlify/functions/telegram-test", "POST");
+            message.classList.add("is-success");
+            message.textContent = "Message envoyé. Vérifie Telegram.";
+        } catch (error) {
+            message.textContent = error.message || "Le message de test n’a pas pu être envoyé.";
+        } finally {
+            button.disabled = false;
+            button.textContent = "Envoyer un message de test";
+        }
+    });
 }
 
 function renderInstagram(user) {
