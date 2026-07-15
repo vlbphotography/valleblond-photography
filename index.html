@@ -86,6 +86,9 @@
   .nav-links a:hover:after {
     width: 100%;
   }
+  .language-switcher { display:flex; gap:5px; margin-left:4px; }
+  .language-switcher button { background:transparent; border:0; color:var(--ink); cursor:pointer; font:500 .72rem 'Work Sans',sans-serif; letter-spacing:.08em; opacity:.5; padding:4px; }
+  .language-switcher button[aria-pressed="true"] { opacity:1; text-decoration:underline; text-underline-offset:4px; }
 
   .hero {
     height: 100vh;
@@ -228,16 +231,17 @@
 <nav class="nav" id="navbar">
   <div class="brand">Valleblond Photography</div>
   <div class="nav-links">
-    <a href="#gallery">Galerie</a>
-    <a href="pages/apropos.html">À propos</a>
-    <a href="pages/contact.html">Contact</a>
+    <a href="#gallery" data-i18n="gallery">Galerie</a>
+    <a href="pages/apropos.html" data-i18n="about">À propos</a>
+    <a href="pages/contact.html" data-i18n="contact">Contact</a>
+    <span data-language-selector></span>
   </div>
 </nav>
 
 <section class="hero">
   <div>
-    <h1>Photographies d'instants,<br>de paysages et d'émotions.</h1>
-    <div class="scroll-hint">SCROLL POUR DÉCOUVRIR ↓</div>
+    <h1 data-i18n="hero">Photographies d'instants,<br>de paysages et d'émotions.</h1>
+    <div class="scroll-hint" data-i18n="scroll">SCROLL POUR DÉCOUVRIR ↓</div>
   </div>
 </section>
 
@@ -248,18 +252,19 @@
 </section>
 
 <footer id="contact">
-  <h2 style="font-family:'Fraunces',serif;font-weight:400;">Parlons de votre projet</h2>
-  <p style="margin:16px auto 0;max-width:36rem;">Pour une question, une demande de tirage ou une collaboration, écrivez-moi directement.</p>
-  <a class="button footer-contact-button" href="pages/contact.html">ME CONTACTER</a>
-  <p class="footer-credit">Créé par Valleblond Photography</p>
+  <h2 style="font-family:'Fraunces',serif;font-weight:400;" data-i18n="contactTitle">Parlons de votre projet</h2>
+  <p style="margin:16px auto 0;max-width:36rem;" data-i18n="contactText">Pour une question, une demande de tirage ou une collaboration, écrivez-moi directement.</p>
+  <a class="button footer-contact-button" href="pages/contact.html" data-i18n="contactButton">ME CONTACTER</a>
+  <p class="footer-credit" data-i18n="createdBy">Créé par Valleblond Photography</p>
   <a class="footer-social" href="https://instagram.com/vlb_photo_" target="_blank" rel="noopener">Instagram @vlb_photo_</a>
   <nav class="footer-legal" aria-label="Informations légales">
-    <a href="pages/mentions-legales.html">Mentions légales</a>
-    <a href="pages/cgv.html">CGV</a>
-    <a href="pages/confidentialite.html">Confidentialité</a>
+    <a href="pages/mentions-legales.html" data-i18n="legal">Mentions légales</a>
+    <a href="pages/cgv.html" data-i18n="terms">CGV</a>
+    <a href="pages/confidentialite.html" data-i18n="privacy">Confidentialité</a>
   </nav>
 </footer>
 
+<script src="assets/js/i18n.js"></script>
 <script>
   const supabaseUrl = 'https://wanwxjzfxlxunynnmxia.supabase.co';
   const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhbnd4anpmeGx4dW55bm5teGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NTQxNjUsImV4cCI6MjA5OTUzMDE2NX0.B0yzXCKrRrVUVfUMpa_f2fI-TWXQ7VSeaRGIeDwFHaM';
@@ -267,14 +272,15 @@
   const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
 
   function createCollectionCard(collection) {
+    const { t, localized } = window.ValleblondI18n;
     const items = (collection.collection_items || []).sort((a,b) => a.position - b.position).map(item => item.Artworks).filter(Boolean);
     if (items.length < 2) return null;
     const card = document.createElement('article'), media = document.createElement('div'), image = document.createElement('img'), label = document.createElement('p'), title = document.createElement('h3'), description = document.createElement('p'), link = document.createElement('a'), controls = document.createElement('div'), previous = document.createElement('button'), next = document.createElement('button'), counter = document.createElement('span');
     let index = 0;
-    const renderSlide = () => { image.src = items[index].image_url; image.alt = items[index].title || collection.title; counter.textContent = `${index + 1} / ${items.length}`; };
+    const renderSlide = () => { image.src = items[index].image_url; image.alt = localized(items[index], 'title') || localized(collection, 'title'); counter.textContent = `${index + 1} / ${items.length}`; };
     card.className = 'card collection-card'; card.onclick = () => window.location.href = `pages/collection.html?id=${encodeURIComponent(collection.id)}`;
-    media.className = 'card-media'; image.loading = 'lazy'; image.decoding = 'async'; label.className = 'collection-label'; label.textContent = 'COLLECTION'; title.textContent = collection.title; description.className = 'loc'; description.textContent = `${items.length} photographies`; link.className = 'button'; link.href = `pages/collection.html?id=${encodeURIComponent(collection.id)}`; link.textContent = 'DÉCOUVRIR LA COLLECTION';
-    controls.className = 'collection-controls'; counter.className = 'collection-counter'; previous.type = next.type = 'button'; previous.textContent = '←'; next.textContent = '→'; previous.setAttribute('aria-label','Photo précédente'); next.setAttribute('aria-label','Photo suivante');
+    media.className = 'card-media'; image.loading = 'lazy'; image.decoding = 'async'; label.className = 'collection-label'; label.textContent = t('collection'); title.textContent = localized(collection, 'title'); description.className = 'loc'; description.textContent = `${items.length} ${t('photographs')}`; link.className = 'button'; link.href = `pages/collection.html?id=${encodeURIComponent(collection.id)}`; link.textContent = t('discoverCollection');
+    controls.className = 'collection-controls'; counter.className = 'collection-counter'; previous.type = next.type = 'button'; previous.textContent = '←'; next.textContent = '→'; previous.setAttribute('aria-label',t('previousPhoto')); next.setAttribute('aria-label',t('nextPhoto'));
     [previous,next].forEach(button => button.addEventListener('click', event => event.stopPropagation())); previous.onclick = () => { index = (index - 1 + items.length) % items.length; renderSlide(); }; next.onclick = () => { index = (index + 1) % items.length; renderSlide(); };
     controls.append(previous,counter,next); media.append(image,controls); card.append(media,label,title,description,link); renderSlide(); return card;
   }
@@ -282,7 +288,7 @@
   async function loadPhotos() {
     const [artworksResult, collectionsResult] = await Promise.all([
       supabaseClient.from('Artworks').select('*').eq('is_published', true).order('created_at', { ascending: false }),
-      supabaseClient.from('collections').select('id,title,created_at,show_items_on_home,collection_items(artwork_id,position,Artworks(id,title,image_url,is_published))').eq('is_published',true).order('created_at',{ascending:false})
+      supabaseClient.from('collections').select('id,title,title_en,title_es,created_at,show_items_on_home,collection_items(artwork_id,position,Artworks(id,title,title_en,title_es,image_url,is_published))').eq('is_published',true).order('created_at',{ascending:false})
     ]);
     const { data, error } = artworksResult;
     if (error) { console.error('Erreur Supabase:', error); return; }
@@ -296,13 +302,16 @@
       const card = document.createElement('div');
       card.className = 'card';
       card.onclick = () => window.location.href = `pages/oeuvre.html?id=${photo.id}`;
+      const { t, localized } = window.ValleblondI18n;
+      const title = localized(photo, 'title');
+      const location = localized(photo, 'location');
       card.innerHTML = `
         <div class="card-media">
-          <img src="${photo.image_url}" alt="${photo.title}" loading="lazy" decoding="async">
+          <img src="${photo.image_url}" alt="${title}" loading="lazy" decoding="async">
         </div>
-        <h3>${photo.title}</h3>
-        <p class="loc">${photo.location || '&nbsp;'}</p>
-        <a href="pages/oeuvre.html?id=${photo.id}" class="button">DÉCOUVRIR L'ŒUVRE</a>
+        <h3>${title}</h3>
+        <p class="loc">${location || '&nbsp;'}</p>
+        <a href="pages/oeuvre.html?id=${photo.id}" class="button">${t('discoverArtwork')}</a>
       `;
 
       // Une œuvre nettement horizontale prend deux colonnes. Le seuil évite

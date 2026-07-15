@@ -28,31 +28,33 @@
     .form-message{display:none;margin-top:28px;padding:22px;background:#eceae4;color:#1c1c1c;font-size:1.05rem}
     .form-message.is-visible{display:block}
     .legal-links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:46px;color:#666;font-size:.85rem}
+    .topline{align-items:center;display:flex;justify-content:space-between;gap:16px}.language-switcher{display:flex;gap:5px}.language-switcher button{background:transparent;border:0;color:#1c1c1c;cursor:pointer;font:500 .72rem 'Work Sans',sans-serif;letter-spacing:.08em;opacity:.5;padding:4px}.language-switcher button[aria-pressed="true"]{opacity:1;text-decoration:underline;text-underline-offset:4px}
   </style>
 </head>
 <body>
   <main>
-    <a href="../index.html">← Retour à la galerie</a>
+    <div class="topline"><a href="../index.html" data-i18n="returnGallery">← Retour à la galerie</a><span data-language-selector></span></div>
     <p>VALLEBLOND PHOTOGRAPHY</p>
-    <h1>Contact</h1>
-    <p>Une question, un projet ou une demande de tirage ? Écrivez-moi.</p>
+    <h1 data-i18n="contact">Contact</h1>
+    <p data-i18n="contactIntro">Une question, un projet ou une demande de tirage ? Écrivez-moi.</p>
 
     <form name="contact" method="POST" data-netlify="true" id="contact-form">
       <input type="hidden" name="form-name" value="contact">
-      <input name="nom" required placeholder="Votre nom">
-      <input name="email" type="email" required placeholder="Votre email">
-      <textarea name="message" rows="6" required placeholder="Votre message"></textarea>
-      <button type="submit">Envoyer le message</button>
+      <input name="nom" required placeholder="Votre nom" data-i18n-placeholder="yourName">
+      <input name="email" type="email" required placeholder="Votre email" data-i18n-placeholder="yourEmail">
+      <textarea name="message" rows="6" required placeholder="Votre message" data-i18n-placeholder="yourMessage"></textarea>
+      <button type="submit" data-i18n="sendMessage">Envoyer le message</button>
     </form>
 
     <p class="form-message" id="form-message" role="status" aria-live="polite"></p>
     <nav class="legal-links" aria-label="Informations légales">
-      <a href="mentions-legales.html">Mentions légales</a>
-      <a href="cgv.html">CGV</a>
-      <a href="confidentialite.html">Confidentialité</a>
+      <a href="mentions-legales.html" data-i18n="legal">Mentions légales</a>
+      <a href="cgv.html" data-i18n="terms">CGV</a>
+      <a href="confidentialite.html" data-i18n="privacy">Confidentialité</a>
     </nav>
   </main>
 
+  <script src="../assets/js/i18n.js"></script>
   <script>
     // Envoie le formulaire à Netlify sans quitter la page.
     const form = document.getElementById('contact-form');
@@ -62,7 +64,7 @@
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       submitButton.disabled = true;
-      submitButton.textContent = 'Envoi en cours…';
+      submitButton.textContent = window.ValleblondI18n.t('sending');
 
       try {
         const response = await fetch('/', {
@@ -75,13 +77,13 @@
 
         form.reset();
         form.hidden = true;
-        message.textContent = 'Votre message a bien été envoyé. Je vous répondrai dès que possible.';
+        message.textContent = window.ValleblondI18n.t('contactSuccess');
         message.classList.add('is-visible');
       } catch (error) {
-        message.textContent = 'Votre message n’a pas pu être envoyé. Veuillez réessayer.';
+        message.textContent = window.ValleblondI18n.t('contactFailure');
         message.classList.add('is-visible');
         submitButton.disabled = false;
-        submitButton.textContent = 'Envoyer le message';
+        submitButton.textContent = window.ValleblondI18n.t('sendMessage');
       }
     });
   </script>

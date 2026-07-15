@@ -1123,6 +1123,12 @@ function renderCollectionEditor(user, collection = null) {
                 <label class="form-field form-field-wide">Description<input name="description" maxlength="1200" value="${escapeHtmlAttribute(collection?.description)}"></label>
                 <label class="form-field">Prix du pack numérique (€)<input name="pack-price" type="number" min="0" step="0.01" inputmode="decimal" value="${collection?.price_digital_pack ?? ""}" placeholder="Ex. 60"></label>
             </div></fieldset>
+            <fieldset class="form-section"><legend class="display">Traductions</legend><p class="dashboard-intro">Optionnel. Les visiteurs verront le français tant que ces champs sont vides.</p><div class="form-grid">
+                <label class="form-field form-field-wide">Titre anglais<input name="title-en" maxlength="140" value="${escapeHtmlAttribute(collection?.title_en)}"></label>
+                <label class="form-field form-field-wide">Titre espagnol<input name="title-es" maxlength="140" value="${escapeHtmlAttribute(collection?.title_es)}"></label>
+                <label class="form-field form-field-wide">Description anglaise<textarea name="description-en" rows="4" maxlength="1200">${escapeHtmlAttribute(collection?.description_en)}</textarea></label>
+                <label class="form-field form-field-wide">Description espagnole<textarea name="description-es" rows="4" maxlength="1200">${escapeHtmlAttribute(collection?.description_es)}</textarea></label>
+            </div></fieldset>
             <fieldset class="form-section"><legend class="display">2. Images du carrousel</legend><p class="dashboard-intro">Sélectionnez au moins deux œuvres. Leur ordre suit l’ordre d’affichage ci-dessous ; pour une importation Instagram, il sera conservé automatiquement.</p><div class="preview-choices" id="collection-artwork-choices"></div></fieldset>
             <label class="publish-toggle"><input name="published" type="checkbox" ${collection?.is_published ? "checked" : ""}><span>Publier la collection</span></label>
             <label class="publish-toggle"><input name="show-items" type="checkbox" ${collection?.show_items_on_home ? "checked" : ""}><span>Afficher aussi ses œuvres séparément sur l’accueil</span></label>
@@ -1153,6 +1159,15 @@ function renderCollectionEditor(user, collection = null) {
             p_artwork_ids: artworkIds
         });
         if (error) { console.error("Impossible d’enregistrer la collection :", error); message.textContent = "La collection n’a pas pu être enregistrée."; button.disabled = false; button.textContent = isEditing ? "Enregistrer" : "Créer la collection"; return; }
+        if (isEditing) {
+            const { error: translationError } = await supabaseClient.from("collections").update({
+                title_en: form["title-en"].value.trim() || null,
+                title_es: form["title-es"].value.trim() || null,
+                description_en: form["description-en"].value.trim() || null,
+                description_es: form["description-es"].value.trim() || null
+            }).eq("id", collection.id);
+            if (translationError) { console.error("Impossible d’enregistrer les traductions de la collection :", translationError); message.textContent = "La collection est enregistrée, mais pas ses traductions."; button.disabled = false; button.textContent = "Enregistrer"; return; }
+        }
         renderCollectionList(user, isEditing ? "La collection a été mise à jour." : "La collection a été créée.");
     });
 }
@@ -1199,7 +1214,7 @@ async function renderCollectionList(user, successMessage = "") {
     const message = document.getElementById("collection-list-message");
     if (successMessage) { message.classList.add("is-success"); message.textContent = successMessage; }
     const list = document.getElementById("collection-list");
-    const { data, error } = await supabaseClient.from("collections").select("id, title, description, price_digital_pack, is_published, show_items_on_home, collection_items(artwork_id, position)").order("created_at", { ascending: false });
+    const { data, error } = await supabaseClient.from("collections").select("id, title, title_en, title_es, description, description_en, description_es, price_digital_pack, is_published, show_items_on_home, collection_items(artwork_id, position)").order("created_at", { ascending: false });
     if (error) { list.textContent = "Les collections seront disponibles après l’activation de la fonctionnalité."; return; }
     if (!data?.length) { list.innerHTML = '<p class="empty-state">Aucune collection pour le moment.</p>'; return; }
     data.forEach((collection) => list.append(createCollectionListItem(collection, user)));
@@ -1742,7 +1757,7 @@ async function renderArtworkEditor(user, artworkId, successMessage = "") {
 
     const { data: artwork, error } = await supabaseClient
         .from(CONFIG.ARTWORKS_TABLE)
-        .select("id, title, location, year, description, format, price_digital, price_physical, image_url, is_published")
+        .select("id, title, title_en, title_es, location, location_en, location_es, year, description, description_en, description_es, format, format_en, format_es, price_digital, price_physical, image_url, is_published")
         .eq("id", artworkId)
         .single();
 
@@ -1807,6 +1822,36 @@ async function renderArtworkEditor(user, artworkId, successMessage = "") {
                 </label>
             </fieldset>
             <fieldset class="form-section">
+                <legend class="display">Traductions</legend>
+                <p class="dashboard-intro">Optionnel. Si un champ est vide, le site affichera la version française. Ces textes ne sont jamais traduits automatiquement.</p>
+                <div class="form-grid">
+                    <label class="form-field form-field-wide">Titre anglais
+                        <input id="edit-artwork-title-en" type="text" maxlength="140">
+                    </label>
+                    <label class="form-field form-field-wide">Titre espagnol
+                        <input id="edit-artwork-title-es" type="text" maxlength="140">
+                    </label>
+                    <label class="form-field">Lieu anglais
+                        <input id="edit-artwork-location-en" type="text" maxlength="140">
+                    </label>
+                    <label class="form-field">Lieu espagnol
+                        <input id="edit-artwork-location-es" type="text" maxlength="140">
+                    </label>
+                    <label class="form-field form-field-wide">Description anglaise
+                        <textarea id="edit-artwork-description-en" rows="5" maxlength="1200"></textarea>
+                    </label>
+                    <label class="form-field form-field-wide">Description espagnole
+                        <textarea id="edit-artwork-description-es" rows="5" maxlength="1200"></textarea>
+                    </label>
+                    <label class="form-field">Format de tirage anglais
+                        <input id="edit-artwork-format-en" type="text" maxlength="140">
+                    </label>
+                    <label class="form-field">Format de tirage espagnol
+                        <input id="edit-artwork-format-es" type="text" maxlength="140">
+                    </label>
+                </div>
+            </fieldset>
+            <fieldset class="form-section">
                 <legend class="display">Remplacer la preview</legend>
                 <p class="dashboard-intro">Choisissez directement un nouveau fichier ou une preview déjà envoyée. Le remplacement sera effectué uniquement à l’enregistrement.</p>
                 <label class="replacement-upload-control" for="replacement-preview-file">
@@ -1831,10 +1876,18 @@ async function renderArtworkEditor(user, artworkId, successMessage = "") {
     document.getElementById("editor-title").textContent = artwork.title || "Sans titre";
     document.getElementById("current-artwork-image").src = artwork.image_url || "";
     document.getElementById("edit-artwork-title").value = artwork.title || "";
+    document.getElementById("edit-artwork-title-en").value = artwork.title_en || "";
+    document.getElementById("edit-artwork-title-es").value = artwork.title_es || "";
     document.getElementById("edit-artwork-location").value = artwork.location || "";
+    document.getElementById("edit-artwork-location-en").value = artwork.location_en || "";
+    document.getElementById("edit-artwork-location-es").value = artwork.location_es || "";
     document.getElementById("edit-artwork-year").value = artwork.year || "";
     document.getElementById("edit-artwork-description").value = artwork.description || "";
+    document.getElementById("edit-artwork-description-en").value = artwork.description_en || "";
+    document.getElementById("edit-artwork-description-es").value = artwork.description_es || "";
     document.getElementById("edit-artwork-format").value = artwork.format || "";
+    document.getElementById("edit-artwork-format-en").value = artwork.format_en || "";
+    document.getElementById("edit-artwork-format-es").value = artwork.format_es || "";
     document.getElementById("edit-price-digital").value = artwork.price_digital ?? "";
     document.getElementById("edit-price-physical").value = artwork.price_physical ?? "";
     document.getElementById("edit-is-published").checked = artwork.is_published;
@@ -1944,6 +1997,29 @@ async function renderArtworkEditor(user, artworkId, successMessage = "") {
             button.disabled = false;
             button.textContent = "Enregistrer les modifications";
             message.textContent = "Les modifications n’ont pas pu être enregistrées. Réessayez.";
+            return;
+        }
+
+        const translationValues = {
+            title_en: document.getElementById("edit-artwork-title-en").value.trim() || null,
+            title_es: document.getElementById("edit-artwork-title-es").value.trim() || null,
+            location_en: document.getElementById("edit-artwork-location-en").value.trim() || null,
+            location_es: document.getElementById("edit-artwork-location-es").value.trim() || null,
+            description_en: document.getElementById("edit-artwork-description-en").value.trim() || null,
+            description_es: document.getElementById("edit-artwork-description-es").value.trim() || null,
+            format_en: document.getElementById("edit-artwork-format-en").value.trim() || null,
+            format_es: document.getElementById("edit-artwork-format-es").value.trim() || null
+        };
+        const { error: translationError } = await supabaseClient
+            .from(CONFIG.ARTWORKS_TABLE)
+            .update(translationValues)
+            .eq("id", artwork.id);
+
+        if (translationError) {
+            console.error("Impossible d’enregistrer les traductions :", translationError);
+            button.disabled = false;
+            button.textContent = "Enregistrer les modifications";
+            message.textContent = "Les informations françaises sont enregistrées, mais les traductions n’ont pas pu l’être.";
             return;
         }
 
