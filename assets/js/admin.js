@@ -1234,14 +1234,18 @@ async function renderCollectionList(user, successMessage = "") {
    d'administration du Studio avant chaque opération.
    ============================================================ */
 
-async function studioRequest(endpoint, method = "GET") {
+async function studioRequest(endpoint, method = "GET", body = null) {
     const { data, error } = await supabaseClient.auth.getSession();
     const accessToken = data?.session?.access_token;
     if (error || !accessToken) throw new Error("Votre session Studio a expiré. Reconnectez-vous.");
 
     const response = await fetch(endpoint, {
         method,
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            ...(body ? { "Content-Type": "application/json" } : {})
+        },
+        ...(body ? { body: JSON.stringify(body) } : {})
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || `Le service a renvoyé une erreur (${response.status}).`);
@@ -1903,6 +1907,11 @@ async function renderArtworkEditor(user, artworkId, successMessage = "") {
                 </label>
                 <div class="preview-choices" id="replacement-previews"></div>
             </fieldset>
+            <fieldset class="form-section" id="instagram-story-section" ${artwork.is_published ? "" : "hidden"}>
+                <legend class="display">Partager sur Instagram</legend>
+                <p class="dashboard-intro">Envoie le lien de cette œuvre dans Telegram pour le copier directement dans le sticker « Lien » de ta story Instagram.</p>
+                <button class="btn" id="send-instagram-story-link" type="button">Envoyer le lien dans Telegram</button>
+            </fieldset>
             <p class="form-message" id="edit-artwork-message" aria-live="polite"></p>
             <div class="editor-actions">
                 <button class="btn" id="cancel-artwork-edit" type="button">Annuler</button>
@@ -1979,6 +1988,28 @@ async function renderArtworkEditor(user, artworkId, successMessage = "") {
     });
 
     document.getElementById("cancel-artwork-edit").addEventListener("click", () => renderArtworkList(user));
+
+    const storyLinkButton = document.getElementById("send-instagram-story-link");
+    if (storyLinkButton) {
+        storyLinkButton.addEventListener("click", async () => {
+            const message = document.getElementById("edit-artwork-message");
+            storyLinkButton.disabled = true;
+            storyLinkButton.textContent = "Envoi dans Telegram…";
+            message.classList.remove("is-success");
+            message.textContent = "";
+
+            try {
+                await studioRequest("/.netlify/functions/telegram-artwork-link", "POST", { artworkId: artwork.id });
+                message.classList.add("is-success");
+                message.textContent = "Lien envoyé. Ouvre Telegram, copie-le puis colle-le dans le sticker « Lien » de ta story.";
+            } catch (error) {
+                message.textContent = error.message || "Le lien n’a pas pu être envoyé dans Telegram.";
+            } finally {
+                storyLinkButton.disabled = false;
+                storyLinkButton.textContent = "Envoyer le lien dans Telegram";
+            }
+        });
+    }
 
     document.getElementById("artwork-edit-form").addEventListener("submit", async (event) => {
         event.preventDefault();
