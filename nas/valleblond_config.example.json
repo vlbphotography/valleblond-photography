@@ -1,0 +1,8 @@
+{
+  "telegram_bot_token": "COLLE_ICI_LE_JETON_DU_BOT_VALLEBLOND",
+  "telegram_chat_id": "COLLE_ICI_TON_IDENTIFIANT_TELEGRAM_NUMERIQUE",
+  "nas_monitor_api_key": "COLLE_ICI_LA_MEME_VALEUR_QUE_DANS_NETLIFY",
+  "site_url": "https://vlbphotography.netlify.app/",
+  "action_url": "https://vlbphotography.netlify.app/.netlify/functions/telegram-local-delivery-action",
+  "health_interval_seconds": 300
+}

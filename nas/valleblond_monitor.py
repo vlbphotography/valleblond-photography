@@ -12,12 +12,39 @@ import time
 import urllib.error
 import urllib.request
 
-BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
-MONITOR_KEY = os.environ.get("NAS_MONITOR_API_KEY", "")
-SITE_URL = os.environ.get("VALLEBLOND_SITE_URL", "https://vlbphotography.netlify.app/")
-ACTION_URL = os.environ.get("VALLEBLOND_ACTION_URL", "https://vlbphotography.netlify.app/.netlify/functions/telegram-local-delivery-action")
-HEALTH_INTERVAL_SECONDS = int(os.environ.get("VALLEBLOND_HEALTH_INTERVAL_SECONDS", "300"))
+CONFIG_PATH = os.environ.get(
+    "VALLEBLOND_CONFIG_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "valleblond_config.json"),
+)
+
+
+def load_local_configuration():
+    """Loads NAS-only secrets without ever placing them in the Git repository."""
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as file:
+            configuration = json.load(file)
+        return configuration if isinstance(configuration, dict) else {}
+    except FileNotFoundError:
+        return {}
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"Configuration Valleblond illisible : {error}") from error
+
+
+CONFIG = load_local_configuration()
+
+# Environment variables remain supported for advanced installations. On the
+# Synology, the local JSON file is simpler and avoids putting secrets in a task.
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or CONFIG.get("telegram_bot_token", "")
+CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID") or CONFIG.get("telegram_chat_id", "")
+MONITOR_KEY = os.environ.get("NAS_MONITOR_API_KEY") or CONFIG.get("nas_monitor_api_key", "")
+SITE_URL = os.environ.get("VALLEBLOND_SITE_URL") or CONFIG.get("site_url", "https://vlbphotography.netlify.app/")
+ACTION_URL = os.environ.get("VALLEBLOND_ACTION_URL") or CONFIG.get(
+    "action_url",
+    "https://vlbphotography.netlify.app/.netlify/functions/telegram-local-delivery-action",
+)
+HEALTH_INTERVAL_SECONDS = int(
+    os.environ.get("VALLEBLOND_HEALTH_INTERVAL_SECONDS") or CONFIG.get("health_interval_seconds", 300)
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
