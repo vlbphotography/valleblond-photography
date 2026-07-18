@@ -65,7 +65,7 @@ export default async (request) => {
       return errorResponse("Le prix de cette œuvre est invalide.", 422);
     }
 
-    const insertResponse = await fetch(`${process.env.SUPABASE_URL}/rest/v1/local_delivery_requests`, {
+    const insertRequest = (payload) => fetch(`${process.env.SUPABASE_URL}/rest/v1/local_delivery_requests`, {
       method: "POST",
       headers: {
         apikey: serviceKey,
@@ -73,7 +73,9 @@ export default async (request) => {
         "Content-Type": "application/json",
         Prefer: "return=representation"
       },
-      body: JSON.stringify({
+      body: JSON.stringify(payload)
+    });
+    const baseRequest = {
         artwork_id: artworkId,
         buyer_name: buyerName,
         buyer_email: buyerEmail,
@@ -81,16 +83,27 @@ export default async (request) => {
         address_line: addressLine,
         postal_code: postalCode,
         city,
-        payment_preference: paymentPreference,
-        // Le prix et le titre sont figés à la demande : une modification
-        // ultérieure de l’œuvre ne doit jamais réécrire l’historique comptable.
+        payment_preference: paymentPreference
+    };
+    // Le prix et le titre sont figés à la demande : une modification
+    // ultérieure de l’œuvre ne doit jamais réécrire l’historique comptable.
+    let insertResponse = await insertRequest({
+        ...baseRequest,
         artwork_title: artwork.title || "Œuvre sans titre",
         amount: amount.toFixed(2),
         currency: "EUR"
-      })
     });
 
-    const createdRequest = await insertResponse.json().catch(() => []);
+    let createdRequest = await insertResponse.json().catch(() => []);
+    // Une ancienne base peut ne pas encore contenir les colonnes comptables.
+    // La demande client reste alors enregistrable, sans bloquer le parcours.
+    const missingAccountingColumn = !insertResponse.ok
+      && /artwork_title|amount|currency/i.test(createdRequest?.message || "")
+      && /column|schema cache/i.test(createdRequest?.message || "");
+    if (missingAccountingColumn) {
+      insertResponse = await insertRequest(baseRequest);
+      createdRequest = await insertResponse.json().catch(() => []);
+    }
     const requestId = createdRequest?.[0]?.id;
 
     if (!insertResponse.ok || !requestId) {
