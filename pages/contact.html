@@ -22,6 +22,7 @@
     h1{font:400 clamp(3rem,9vw,6rem) Fraunces,serif;margin:20px 0}
     p{color:#666;line-height:1.7}
     form{display:grid;gap:14px;margin-top:42px}
+    form[hidden]{display:none}
     input,textarea{padding:16px;border:1px solid #ccc;background:white;font:inherit}
     button{padding:17px;background:#1c1c1c;color:white;border:0;font:inherit;cursor:pointer}
     button:disabled{cursor:wait;opacity:.65}
@@ -77,6 +78,8 @@
 
         form.reset();
         form.hidden = true;
+        submitButton.disabled = false;
+        submitButton.textContent = window.ValleblondI18n.t('sendMessage');
         message.textContent = window.ValleblondI18n.t('contactSuccess');
         message.classList.add('is-visible');
       } catch (error) {
