@@ -5,10 +5,10 @@ const paypalBaseUrl = process.env.PAYPAL_ENVIRONMENT === "live"
 // Tirage A3 non encadré, colis inférieur à 500 g. Les montants comprennent
 // l'emballage et sont présentés au client avant qu'il ouvre PayPal.
 const shippingOptions = {
-  france: { label: "Colissimo France", amount: 9 },
-  europe: { label: "Colissimo Europe", amount: 17 },
-  uk: { label: "Colissimo Royaume-Uni", amount: 23 },
-  world: { label: "Colissimo international", amount: 39 }
+  france: { label: "Colissimo à domicile — France métropolitaine", amount: 9 },
+  europe: { label: "Colissimo à domicile — Union européenne et Suisse", amount: 17 },
+  uk: { label: "Colissimo à domicile — Royaume-Uni", amount: 23 },
+  world: { label: "Colissimo à domicile — reste du monde", amount: 39 }
 };
 
 function errorResponse(message, status = 500) {
@@ -49,12 +49,10 @@ export default async (request) => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
   try {
-    const { artworkId, shippingZone, pickupPoint } = await request.json();
+    const { artworkId, shippingZone } = await request.json();
     if (!artworkId) return errorResponse("Œuvre introuvable.", 400);
     const shipping = shippingOptions[shippingZone];
     if (!shipping) return errorResponse("Choisissez une zone de livraison valide.", 400);
-    const cleanPickupPoint = typeof pickupPoint === "string" ? pickupPoint.trim().slice(0, 100) : "";
-    if (shippingZone === "france" && !cleanPickupPoint) return errorResponse("Indiquez le point relais souhaité.", 400);
 
     const serviceKey = getServiceRoleKey();
     const artworkResponse = await fetch(
@@ -90,7 +88,7 @@ export default async (request) => {
         purchase_units: [{
           // La zone est liée à la commande PayPal afin que le serveur puisse
           // enregistrer le détail du prix après la capture.
-          custom_id: Buffer.from(JSON.stringify({ a: artwork.id, z: shippingZone, p: cleanPickupPoint })).toString("base64url"),
+          custom_id: Buffer.from(JSON.stringify({ a: artwork.id, z: shippingZone })).toString("base64url"),
           description: `Tirage — ${artwork.title} (${shipping.label})`,
           amount: { currency_code: "EUR", value: amount.toFixed(2) }
         }]

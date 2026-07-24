@@ -6,10 +6,10 @@ const paypalBaseUrl = process.env.PAYPAL_ENVIRONMENT === "live"
 const paypalEnvironment = process.env.PAYPAL_ENVIRONMENT === "live" ? "live" : "sandbox";
 
 const shippingOptions = {
-  france: { label: "Colissimo France", amount: 9 },
-  europe: { label: "Colissimo Europe", amount: 17 },
-  uk: { label: "Colissimo Royaume-Uni", amount: 23 },
-  world: { label: "Colissimo international", amount: 39 }
+  france: { label: "Colissimo à domicile — France métropolitaine", amount: 9 },
+  europe: { label: "Colissimo à domicile — Union européenne et Suisse", amount: 17 },
+  uk: { label: "Colissimo à domicile — Royaume-Uni", amount: 23 },
+  world: { label: "Colissimo à domicile — reste du monde", amount: 39 }
 };
 
 function errorResponse(message, status = 500) {
@@ -97,7 +97,7 @@ export default async (request) => {
         p_buyer_email: order.payer?.email_address || null,
         p_amount: capture.amount.value,
         p_currency: capture.amount.currency_code,
-        p_shipping_address: { ...(unit.shipping || {}), pickup_point: orderReference?.p || null },
+        p_shipping_address: unit.shipping || {},
         p_shipping_zone: shipping.label,
         p_shipping_amount: shipping.amount,
         p_paypal_environment: paypalEnvironment,
